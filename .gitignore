@@ -1,0 +1,66 @@
+# Environment and local configuration
+.env
+.env.*
+*.env.local
+local.config
+local.settings.json
+
+# Secrets, certificates, private/public keys, and kubeconfigs
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+id_rsa
+id_rsa.pub
+id_ed25519
+id_ed25519.pub
+kubeconfig*
+admin.conf
+*.kubeconfig
+*.token
+
+# OS-generated files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+.DS_Store
+*.directory
+
+# IDE, editor, and tool workspace artifacts
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+*.bak
+
+# Temporary files and scratch directories
+tmp/
+temp/
+*.tmp
+scratch/
+
+# Logs and runtime traces
+*.log
+*.trace
+npm-debug.log*
+yarn-debug.log*
+
+# Python caches and virtual environments
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+
+# Node.js dependencies
+node_modules/
+
+# Benchmark temporary and scratch files
+benchmarks/results/*.tmp
+benchmarks/results/scratch/
+
+# Ensure .gitkeep files remain tracked
+!.gitkeep
