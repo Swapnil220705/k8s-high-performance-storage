@@ -94,14 +94,18 @@ The intended deployment separates cluster traffic into logical or physical plane
 
 ## 3. Kubernetes Orchestration Layer
 
-- **Cluster Deployment Engine:** `kubeadm` providing standard, upstream-compliant Kubernetes lifecycle management.
+- **Cluster Deployment Engine:** `kubeadm` v1.28.8 providing standard, upstream-compliant Kubernetes lifecycle management.
+- **Target Software Baseline Specification (ADR-009):**
+  - **Host Operating System:** Ubuntu Server 22.04 LTS (Jammy Jellyfish).
+  - **Linux Kernel:** 5.15.0 LTS with in-tree `nvme-tcp` and `/dev/kvm`.
+  - **Kubernetes Version:** v1.28.8.
+  - **Container Runtime:** `containerd` v1.7.15 (systemd cgroup driver).
+  - **CNI Plugin:** Calico v3.27.3 (routed BGP without VXLAN overhead).
+  - **Storage Engine:** OpenEBS Mayastor v2.5.0.
+  - **Virtualization Engine:** KubeVirt v1.1.1 + CDI v1.58.1.
 - **Node Topology:**
-  - **1 Dedicated Control Plane Node:** Hosts API server, `etcd`, controller manager, and scheduler. Untainted for workloads in minimal lab setups if necessary, but isolated where hardware permits.
-  - **3 Dedicated Worker Nodes:** Labeled and configured for storage and virtualization workloads (`openebs.io/engine=mayastor`, `kubevirt.io/schedulable=true`).
-- **Container Runtime:** `containerd` (v1.7+) utilizing `systemd` cgroup drivers.
-- **Container Network Interface (CNI):** Calico or Flannel.
-  - *Calico:* Preferred for fine-grained NetworkPolicy enforcement and BGP routing capabilities.
-  - *Flannel:* Fallback for simpler VXLAN encapsulation if lab network constraints restrict BGP.
+  - **1 Dedicated Control Plane Node:** Hosts API server, `etcd`, controller manager, scheduler, and Mayastor control plane agents.
+  - **3 Dedicated Worker Nodes:** Labeled and configured for storage and virtualization workloads (`openebs.io/engine=mayastor`, `kubevirt.io/schedulable=true`), each with 2 GiB HugePages pre-allocated and dedicated NVMe/SSD raw block devices.
 
 ---
 
@@ -218,6 +222,11 @@ Mayastor volumes natively provide block devices with `ReadWriteOnce` (RWO) seman
 ### 6.3 Failure Considerations of the Shared Gateway
 - **Gateway Single Point of Failure (SPOF):** If the NFS server gateway crashes during migration or normal I/O, all connected VMs experience I/O hangs.
 - **Cache Coherency:** NFS client caching must be set to direct/sync mode (`cache=none` or `sync`) to prevent QEMU disk corruption, incurring latency penalties.
+
+### 6.4 Adopted Dual-Tier Workload Architecture (ADR-008)
+To resolve the live-migration vs. raw block performance trade-off, the project adopts a Dual-Tier strategy (detailed in `docs/storage-architecture-analysis.md`):
+1. **Tier 1 (Direct Block / Maximum NVMe Throughput):** Stateful benchmarking VMs bind directly to raw Mayastor RWO block volumes (`volumeMode: Block`). Pinned to node; zero filesystem or NFS overhead.
+2. **Tier 2 (Shared Storage / Live-Migratable VMs):** Elastic VMs bind to RWX volumes exported by a clustered NFS gateway backed by a 3-way replicated Mayastor volume. Fully supports KubeVirt live migration across nodes.
 
 ---
 

@@ -224,6 +224,15 @@ Development follows a strict **hybrid infrastructure model**:
 - [Student Learning Notes (LEARNING_NOTES.md)](LEARNING_NOTES.md): Step-by-step conceptual explanations, interview Q&A, and systems engineering concepts.
 - [Architectural Decision Records (DECISIONS.md)](DECISIONS.md): Justifications and trade-off analyses for structural design choices.
 
+### Infrastructure Discovery & Feasibility Reports (Chunk 1 Deliverables)
+- [Local Infrastructure Inventory (docs/infrastructure-inventory.md)](docs/infrastructure-inventory.md): Hardware detection, memory limitations, and WSL2 assessment on the dev laptop.
+- [College Infrastructure Questionnaire (docs/college-infrastructure-questionnaire.md)](docs/college-infrastructure-questionnaire.md): Formal inquiry and hardware sizing for lab administrators.
+- [Software Version Compatibility Matrix (docs/compatibility-matrix.md)](docs/compatibility-matrix.md): In-depth research establishing Candidate Stack A (Ubuntu 22.04 LTS, K8s 1.28, Mayastor 2.5.0, KubeVirt 1.1.1).
+- [Storage Architecture Analysis (docs/storage-architecture-analysis.md)](docs/storage-architecture-analysis.md): RWO vs. RWX evaluation, Mayastor SPDK volume pipeline, and dual-tier storage strategy.
+- [Network & Virtualization Requirements (docs/network-and-virtualization-requirements.md)](docs/network-and-virtualization-requirements.md): 15 verified ports, network topology, and hardware KVM pass-through requirements.
+- [Deployment Options Evaluation (docs/deployment-options.md)](docs/deployment-options.md): Comparative evaluation of physical servers, lab PCs, hypervisor nested VMs, and cloud options.
+- [Final Deployment Proposal (docs/final-deployment-proposal.md)](docs/final-deployment-proposal.md): Complete research-backed engineering blueprint for cluster deployment.
+
 ---
 
 ## 9. Future Implementation Roadmap

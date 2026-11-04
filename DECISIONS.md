@@ -22,6 +22,8 @@
 - [ADR-005: Free College Infrastructure as the Primary Deployment Target](#adr-005-free-college-infrastructure-as-the-primary-deployment-target)
 - [ADR-006: Multiple Meaningful Conventional Commits per Project Chunk](#adr-006-multiple-meaningful-conventional-commits-per-project-chunk)
 - [ADR-007: Antigravity-Assisted Chunk-Based Development Methodology](#adr-007-antigravity-assisted-chunk-based-development-methodology)
+- [ADR-008: Dual-Tier Storage Architecture for High-Performance Block and Live Migration](#adr-008-dual-tier-storage-architecture-for-high-performance-block-and-live-migration)
+- [ADR-009: Target Software Stack Baseline Specification](#adr-009-target-software-stack-baseline-specification)
 
 ---
 
@@ -174,3 +176,47 @@
   - *Negative:* Requires interactive review turns between chunks.
 - **Validation Evidence:**  
   Enforced via `AGENTS.md` and verified in Chunk 0.
+
+
+---
+
+## ADR-008: Dual-Tier Storage Architecture for High-Performance Block and Live Migration
+
+- **Status:** PROPOSED (Evaluated in Chunk 1)
+- **Date:** 2026-11-04
+- **Context:**  
+  KubeVirt live migration requires `ReadWriteMany` (RWX) shared storage so both source and destination `virt-launcher` pods can access the disk during RAM streaming. OpenEBS Mayastor natively provisions high-performance NVMe volumes in `ReadWriteOnce` (RWO) block mode. Native Mayastor RWX block volumes are not production-ready in Mayastor v2.5/v2.6.
+- **Options Considered:**
+  1. *Solely Direct RWO Block:* Maximum NVMe performance, but zero live-migration capability.
+  2. *Solely NFS-Backed RWX Storage:* Enables live migration, but masks raw NVMe throughput behind NFS protocol translation.
+  3. *Dual-Tier Storage Strategy:* Deploy direct Mayastor RWO block volumes for I/O-intensive benchmarking VMs and deploy an NFS gateway over a Mayastor RWO volume for live-migratable VMs.
+- **Decision:**  
+  Adopt Option 3: Dual-Tier Storage Strategy.
+- **Reasoning:**  
+  Permits evaluating both extremes: pure NVMe wire speeds via SPDK for static VMs, and zero-downtime live migration over RWX shared storage for elastic VMs.
+- **Consequences:**  
+  - *Positive:* Validates all required project deliverables without architectural compromise.
+  - *Negative:* Increases configuration complexity; NFS gateway acts as a single point of failure for live-migratable VMs.
+- **Validation Evidence:**  
+  Documented in `docs/storage-architecture-analysis.md`; to be empirically measured in Chunks 6 and 8.
+
+---
+
+## ADR-009: Target Software Stack Baseline Specification
+
+- **Status:** PROPOSED (Evaluated in Chunk 1)
+- **Date:** 2026-11-04
+- **Context:**  
+  Software version incompatibilities between Linux kernel versions, Kubernetes releases, containerd CRI changes, and Mayastor SPDK drivers are a primary failure mode in cloud-native storage projects.
+- **Options Considered:**
+  1. *Bleeding Edge:* Latest versions of everything (Ubuntu 24.04, Linux 6.8, Kubernetes 1.31, containerd 2.0). High risk of unresolvable CRI/CSI breaking changes.
+  2. *Conservative Proven LTS Baseline:* Ubuntu Server 22.04 LTS (Kernel 5.15), Kubernetes v1.28.8, containerd v1.7.15, OpenEBS Mayastor v2.5.0, KubeVirt v1.1.1, Calico v3.27.3.
+- **Decision:**  
+  Adopt Option 2: The Conservative Proven LTS Baseline (Candidate Stack A).
+- **Reasoning:**  
+  Every component in this combination has documented, verified compatibility. Kernel 5.15 contains the required `nvme-tcp` and `/dev/kvm` drivers, and Mayastor v2.5 is fully validated on Kubernetes 1.28.
+- **Consequences:**  
+  - *Positive:* Maximum deployment predictability and reduced debugging overhead.
+  - *Negative:* Reaches upstream end-of-support earlier than modern v1.30+ releases.
+- **Validation Evidence:**  
+  Documented in `docs/compatibility-matrix.md`.

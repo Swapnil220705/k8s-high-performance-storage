@@ -76,7 +76,7 @@
 - **Why It Matters to Our Project:** NVMe-oF over TCP serves as the wire protocol carrying block commands between Mayastor Nexus and worker node replicas.
 - **Official Documentation:** [NVM Express Standards](https://nvmexpress.org/specifications/)
 - **Important Implementation Questions:** What kernel parameters (`nvme_core.multipath`, TCP socket buffer sizes) must be tuned on worker nodes to prevent connection timeouts during sustained heavy writes?
-- **Research Status:** Protocol specifications reviewed; kernel parameter tuning pending Chunk 1.
+- **Research Status:** Protocol specifications and kernel initiator requirements verified in Chunk 1 (2026-11-04). Documented in docs/network-and-virtualization-requirements.md.
 
 ### 10. DiskPools & Cloud-Native Storage Provisioning
 - **What Needs to be Researched:** Mayastor `DiskPool` CRD lifecycle, SPDK Logical Volume (`lvol`) allocation, pool exhaustion thresholds, and block device discovery.
@@ -111,14 +111,14 @@
 - **Why It Matters to Our Project:** Identifies the fundamental architectural challenge: Mayastor provides RWO block devices, while KubeVirt live migration requires RWX storage access.
 - **Official Documentation:** [Kubernetes Persistent Volumes - Access Modes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#access-modes)
 - **Important Implementation Questions:** Can KubeVirt live migration operate over RWO volumes using transient multi-attach, or is an RWX shared filesystem strictly required?
-- **Research Status:** Core research topic; feasibility analysis tracked in ADR-004.
+- **Research Status:** Theoretical feasibility analysis completed in Chunk 1 (2026-11-04). Detailed findings documented in docs/storage-architecture-analysis.md and formalized in ADR-008. Empirical validation pending Chunks 6 and 8.
 
 ### 15. Shared Storage via NFS Gateway Integration
 - **What Needs to be Researched:** NFSv4 server export settings, synchronous locking (`sync`, `no_wdelay`), client mount options (`cache=none`, `hard`, `intr`), and CSI NFS drivers.
 - **Why It Matters to Our Project:** Implements the proposed RWX shared storage tier for KubeVirt live migration backed by Mayastor PVs.
 - **Official Documentation:** [NFS Ganesha / Linux NFS Documentation](https://linux-nfs.org/wiki/index.php/Main_Page)
 - **Important Implementation Questions:** What is the throughput and IOPS degradation percentage when layering NFSv4 over a Mayastor NVMe volume compared to direct block mount?
-- **Research Status:** Architecture proposed in ADR-004; empirical testing pending Chunk 6 and Chunk 8.
+- **Research Status:** Architecture and failure mode analysis completed in Chunk 1 (2026-11-04). Documented in docs/storage-architecture-analysis.md and ADR-004/ADR-008. Gateway recovery drills pending Chunk 6 and Chunk 9.
 
 ### 16. CPU Hot-Plugging in Virtualized Environments
 - **What Needs to be Researched:** ACPI CPU hot-plug events, Linux guest kernel `cpu/cpu*/online` interfaces, and KubeVirt `vCPU` dynamic scaling specs.
