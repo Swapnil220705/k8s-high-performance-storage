@@ -17,15 +17,19 @@ This project, developed under the **Zoho SETU — College Student Project Progra
 
 All AI agents assisting this project MUST adhere strictly to the following core tenets:
 
-1. **Chunk Boundaries:** Work ONLY on the currently authorized chunk. Never jump ahead to future chunks, create manifests, or execute operations outside the active chunk's explicit scope.
-2. **Explicit User Approval:** After completing an authorized chunk, the agent MUST STOP and await explicit user review and approval before proceeding.
-3. **No Fabricated Evidence:** Never invent, simulate, or synthesize test results, benchmarks, deployment outcomes, or hardware metrics. If a test has not been executed on live hardware, record it as **NOT VERIFIED**.
-4. **No Premature Feature Completion:** Never claim an infrastructure feature is complete or functional solely because a Kubernetes YAML manifest or shell script has been written. A manifest is merely an artifact until deployed and verified.
-5. **No Destructive Operations:** Never execute destructive system commands (`rm -rf`, disk formatting, partition deletion, host reboots, BIOS alterations, network interface resets) without explicit, unambiguous user confirmation.
-6. **No Paid Infrastructure:** Never invoke, configure, or provision paid cloud infrastructure. The deployment strategy is strictly limited to college laboratory servers and free local resources.
-7. **Secrets & Security:** Never hardcode or commit API tokens, passwords, SSH private keys, TLS private keys, or kubeconfigs.
-8. **Git Discipline:** Follow Conventional Commits. Stage only intentional files. Never force-push or rewrite repository history.
-9. **Documentation Synchronization:** Keep `PROJECT_STATE.md`, `ARCHITECTURE.md`, `RESEARCH.md`, `LEARNING_NOTES.md`, and `DECISIONS.md` synchronized after every meaningful milestone.
+1. **Scope Preservation:** The complete original technical scope remains the target (Multi-node K8s, Mayastor SPDK, NVMe-oF, KubeVirt, dual-path live migration, hot-plugging, fault drills, FIO benchmarks, and Prometheus/Grafana observability). Never downscale or simplify objectives to fit constrained development hardware.
+2. **Decoupled Development Continuity:** Development must not stop merely because college infrastructure or administrative permissions are unavailable. College infrastructure is an optional resource opportunity, not a mandatory blocking gate.
+3. **Prefer Free & Local Resources:** Leverage free, local resources (such as WSL2 Ubuntu 24.04 with verified `/dev/kvm`) for authoring, linting, toolchain automation, and lightweight unit testing.
+4. **No Paid Infrastructure:** Never invoke, configure, or provision paid cloud infrastructure without explicit user authorization. The deployment strategy is strictly limited to college laboratory servers and free local resources.
+5. **Non-Destructive Checks First:** Always execute non-destructive environment checks before installing, modifying, or configuring any tool or host setting.
+6. **No Fabricated Evidence:** Never invent, simulate, or synthesize test results, benchmarks, deployment outcomes, or hardware metrics. If a test has not been executed on live hardware, record it as **NOT VERIFIED**. Never present a simulation as a real integration test.
+7. **Three-State Feature Tracking:** Maintain clear distinction across three independent states: `IMPLEMENTED` (code/manifest exists), `VALIDATED` (empirically tested with logs), and `INFRASTRUCTURE-DEPENDENT` (requires multi-node/NVMe hardware). Never mark a feature validated solely because manifests exist.
+8. **Comprehensive Milestones:** Group logically related implementation activities into comprehensive, cohesive milestones and prompts. Avoid creating artificial tiny subchunks.
+9. **Chunk Boundaries & Explicit User Approval:** Work ONLY on the currently authorized milestone. After completing a milestone, the agent MUST STOP and await explicit user review and approval before proceeding.
+10. **No Destructive Operations:** Never execute destructive system commands (`rm -rf`, disk formatting, partition deletion, host reboots, BIOS alterations, network interface resets) without explicit, unambiguous user confirmation. A storage device is never available until ownership, allocation, and wipe permission are explicitly confirmed.
+11. **Secrets & Security:** Never hardcode or commit API tokens, passwords, SSH private keys, TLS private keys, or kubeconfigs.
+12. **Git Discipline:** Follow Conventional Commits. Stage only intentional files. Never force-push or rewrite repository history. **NEVER automatically push to remote repositories without explicit user instruction.**
+13. **Documentation Synchronization:** Keep `PROJECT_STATE.md`, `ARCHITECTURE.md`, `RESEARCH.md`, `LEARNING_NOTES.md`, and `DECISIONS.md` synchronized after every meaningful milestone.
 
 ---
 
@@ -100,8 +104,14 @@ To maintain complete scientific and engineering integrity, all claims must be ca
 
 1. **DOCUMENTED CAPABILITY:** A feature explicitly documented by upstream project maintainers (e.g., KubeVirt docs state live migration is supported).
 2. **PROPOSED / STATIC MANIFEST:** A configuration authored in the repository but not yet executed on running hardware.
-3. **SIMULATED / SYNTHETIC TEST:** A test executed in a virtual or mocked environment (e.g., local WSL2 or single-node minikube), with documented deviations from bare-metal behavior.
-4. **VERIFIED EMPIRICAL DEPLOYMENT:** A capability deployed on the physical multi-node cluster, experimentally exercised, and backed by recorded logs, terminal outputs, or metrics data stored in `benchmarks/results/` or `reports/`.
+3. **SIMULATED / SYNTHETIC TEST:** A test executed in a virtual or mocked environment (e.g., local WSL2 or single-node dev cluster), with documented deviations from bare-metal behavior.
+4. **VERIFIED EMPIRICAL DEPLOYMENT:** A capability deployed on physical multi-node hardware, experimentally exercised, and backed by recorded logs, terminal outputs, or metrics data stored in `benchmarks/results/` or `reports/`.
+
+### Three-State Feature Completion Framework
+Every feature in the project lifecycle is tracked across three independent states:
+- **`IMPLEMENTED`:** Code, configurations, Helm values, Kubernetes manifests, and automation scripts exist and are committed in the repository.
+- **`VALIDATED`:** Automated test suites or live drills have been executed; assertions passed; evidence logs are archived.
+- **`INFRASTRUCTURE-DEPENDENT`:** The implementation or full validation requires multi-node hardware, dedicated raw NVMe drives, or physical network routing currently unavailable in the local environment.
 
 ---
 
