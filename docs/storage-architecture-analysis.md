@@ -2,18 +2,19 @@
 
 **Project Name:** Deploy High-Performance Storage for Kubernetes  
 **Project ID:** SWFW_5S_08  
-**Audit Date:** 2026-11-05 (Chunk 1.9 Final Audit)  
+**Audit Date:** 2026-11-05 (Chunk 1.10 Final Reconciliation)  
 **Document Status:** TECHNICAL ARCHITECTURE & RECOVERY SPECIFICATION  
-**Focus Area:** Native OpenEBS Mayastor RWX Block Volumes vs. NFS Gateway, Replica Rebuild Mechanics, and Live-Migration Test Suite  
+**Focus Area:** Native OpenEBS Mayastor RWX Block Volumes vs. NFS Gateway, Rebuild Configuration Mechanics, and Evidence-Based Live-Migration Safety  
 
 ---
 
 > [!CRITICAL]
 > **Core Architectural Principles & Clarifications:**  
-> 1. **Native RWX Block Support:** OpenEBS Mayastor v2.11+ / OpenEBS v4.6+ introduces **native experimental ReadWriteMany (RWX) block volumes** designed specifically to enable KubeVirt virtual machine live migration without an intermediate NFS layer.
+> 1. **Native RWX Block Support:** OpenEBS Mayastor v2.12.2 (OpenEBS v4.7.0) provides **native experimental ReadWriteMany (RWX) block volumes** designed specifically to enable KubeVirt virtual machine live migration without an intermediate NFS layer.
 > 2. **Quorum Decoupling:** Mayastor storage data replication, Nexus controller failover, and replica fault tolerance operate as independent data-plane mechanisms and are **completely decoupled** from Kubernetes control-plane (`etcd`) Raft consensus.
 > 3. **Degraded State Semantics ($N=3$ on 3-Node Cluster):** In a 3-node cluster with volume replica count $N=3$, failure of a single node leaves the volume in a **Degraded** state (2 surviving replicas). Mayastor **cannot place a replacement replica** because only 2 nodes remain and anti-affinity prevents colocation.
-> 4. **Write Log Rebuild Mechanism:** Mayastor utilizes a **write log** tracking dirty ranges/extents (not an in-memory dirty-block bitmap) with a default 10-minute grace period (`--faulted-child-wait-period=10m`) for partial rebuilds.
+> 4. **Configurable Rebuild Timers:** Mayastor implements two distinct rebuild timers: the **Nexus partial rebuild wait period** (data plane) and the **node unreachable grace period** (control plane). Both are operator-configurable parameters in the Helm chart.
+> 5. **Evidence-Based Concurrency Safety:** Concurrency safety during live migration is audited via multi-layer event correlation, monotonic in-guest sequence writes, and data integrity verification, acknowledging real-world measurement boundaries rather than claiming theoretical "zero-millisecond" mathematical proofs.
 
 ---
 
@@ -65,7 +66,7 @@ flowchart TD
 
 ---
 
-## 2. Mayastor Rebuild Mechanics: Write Log vs. Discredited Bitmap
+## 2. Mayastor Rebuild Mechanics & Configuration Parameters
 
 When a faulted replica reconnects or a new replica is carved, Mayastor restores volume redundancy through the **Nexus Rebuild Engine**.
 
@@ -79,7 +80,7 @@ sequenceDiagram
 
     Note over Nexus,RepOffline: Worker 3 Disconnects / Network Failure
     Nexus->>Nexus: Mark Replica 3 as Faulted
-    Nexus->>Nexus: Start Wait Timer (--faulted-child-wait-period=10m)
+    Nexus->>Nexus: Start Wait Timer (child_wait_period)
     Nexus->>Nexus: Initialize Write Log (Track Dirty Extent Ranges)
     
     Client->>Nexus: Write Block I/O (Sectors 1024-2047)
@@ -93,16 +94,38 @@ sequenceDiagram
     Nexus->>Nexus: Mark Replica 3 Healthy (Status: Online 3/3)
 ```
 
-### 2.1 The Write Log Mechanism
-- **Architecture:** Upstream Mayastor (v2.x / v4.x) tracks uncommitted modifications to faulted replicas using a **Nexus write log** recording dirty address ranges and extents.
-- **Clarification:** Earlier community documentation colloquially referred to an "in-memory dirty-block bitmap". The actual SPDK-based Mayastor implementation manages an extent-based range write log in memory on the Nexus node.
-- **Default Grace Period (`--faulted-child-wait-period`):**
-  - When a replica disconnects, the Nexus does not immediately discard it. It retains the child's registration and accumulates dirty range entries in its write log for a default period of **10 minutes** (`600s`).
-  - If the node recovers and reconnects before this timer expires, Mayastor performs a **Partial Rebuild**, transferring only the specific extents recorded in the write log. This minimizes network traffic and restores $N=3$ redundancy in seconds.
+### 2.1 Dissecting Rebuild Configuration Settings (Mayastor v2.12.2 / Chart v4.7.0)
+Mayastor implements two distinct timers that govern failure handling and rebuild operations. These parameters must never be conflated:
 
-### 2.2 Conditions Triggering a Full Rebuild
+1. **Partial Rebuild Wait Period (`child_wait_period` / `--faulted-child-wait-period`):**
+   - **Scope:** Configured on the **Nexus / I/O Engine** (`io-engine` daemonset / Nexus runtime).
+   - **Operational Meaning:** When a child replica in an active volume fails (e.g., transient network drop or worker reboot), the Nexus marks the child as `Faulted` and retains its write log tracking dirty extents.
+   - **Configurability:** Parameter `io_engine.faulted_child_wait_period` in the Helm chart.
+   - **Baseline Default:** Documented baseline default is **10 minutes** (`10m` / `600s`).
+   - **Behavior:** If the faulted replica reconnects before this timer elapses, the Nexus replays dirty ranges from the write log (**Partial Rebuild**). If the timer expires, the Nexus permanently disowns the child, purges the write log, and any subsequent rebuild must be a **Full Rebuild**.
+
+2. **Node Unreachable / Offline Rebuild Grace Period (`node_unreachable_timeout` / `rebuild.grace_period`):**
+   - **Scope:** Configured on the **Mayastor Control Plane Agent** (`mayastor-agent-core` / control plane chart settings).
+   - **Operational Meaning:** When a worker node hosting storage pools stops sending heartbeats or is marked `NotReady` by Kubernetes, how long the control plane waits before declaring the node's pools unavailable and initiating replacement replica allocation on other available nodes.
+   - **Configurability:** Parameter `agent.core.rebuild.grace_period` or `--node-unreachable-timeout` in chart values.
+   - **Baseline Default:** Typically configured between **5 minutes and 10 minutes** (`5m` – `10m`).
+   - **Critical Distinction:** The *faulted child wait period* is a **data-plane Nexus setting** governing in-memory dirty extent tracking. The *node unreachable timeout* is an **orchestration-plane setting** governing automated pool and replica relocation.
+
+### 2.2 Published vs. Unpublished Degraded Volume Behavior
+- **Published Volumes (Actively Attached to an Executing Nexus):**
+  - A Nexus controller is actively running and serving guest I/O.
+  - When a replica drops, the Nexus immediately opens a write log and begins accumulating dirty extent ranges. The partial rebuild timer actively counts down.
+  - If the node recovers within the `child_wait_period`, a high-speed partial rebuild restores consistency without full data re-streaming.
+- **Unpublished Volumes (Idle, Unmounted, No Active Nexus):**
+  - No Nexus controller is instantiated; the volume is quiescent with zero active writes.
+  - If a worker node hosting one of the replicas reboots or goes offline while the volume is unpublished, no active write log is required.
+  - When the volume is subsequently published (e.g., when a VM starts), the Mayastor control plane inspects the replica generation counters and timestamps stored in pool metadata:
+    - If all online replicas have matching generation counters, the volume mounts immediately without rebuild.
+    - If an out-of-date or missing replica is detected, the control plane initiates a resynchronization process before publishing.
+
+### 2.3 Conditions Triggering a Full Rebuild
 A **Full Rebuild** (streaming the complete raw block volume byte-for-byte across NVMe-oF) is triggered under any of the following four conditions:
-1. **Grace Period Expiration:** The disconnected replica fails to reconnect within the 10-minute `--faulted-child-wait-period`. The Nexus disowns the child, purges the write log, and removes the replica registration.
+1. **Grace Period Expiration:** The disconnected replica fails to reconnect within the configured `child_wait_period`. The Nexus disowns the child, purges the write log, and removes the replica registration.
 2. **Device / Pool Destruction:** The underlying NVMe device, partition, or `DiskPool` on the failed node suffered catastrophic corruption or hardware replacement, requiring a completely new, blank replica to be provisioned.
 3. **Nexus Host Failure During Child Fault:** If the node hosting the Nexus controller crashes while Replica 3 is already faulted, the in-memory write log is lost upon Nexus recreation. When the new Nexus starts on a surviving node, it cannot verify dirty ranges and must force a full resynchronization.
 4. **Write Log Capacity Exhaustion:** If continuous high-throughput random write workloads exhaust allocated write log buffer capacity before child reconnection, the Nexus marks the child for full resynchronization.
@@ -167,7 +190,7 @@ flowchart TD
         S3["Scenario 3: Source Node Crash During Migration<br/>(Host Death, Lease Expiry & Failover)"]
         S4["Scenario 4: Inter-Node Network Partition<br/>(Split-Brain Resistance & QEMU Timeout)"]
         S5["Scenario 5: Interrupted Migration Recovery<br/>(Target Pod Termination & Lock Cleanup)"]
-        S6["Scenario 6: Exclusive Write Safety Verification<br/>(I/O Counter Audit Across Pre-Copy & Cutover)"]
+        S6["Scenario 6: Evidence-Based Concurrency Safety Audit<br/>(Sequence-Numbered Writes & Event Correlation)"]
         
         S1 --> S2 --> S3 --> S4 --> S5 --> S6
     end
@@ -231,7 +254,7 @@ flowchart TD
   - Live migration in progress between Worker 1 and Worker 2.
 - **Execution Steps:**
   1. Inject an `iptables` drop rule blocking QEMU migration port (`TCP 49152+`) between Worker 1 and Worker 2.
-  2. Keep NVMe-oF storage network (`TCP 8420 / 4420`) intact.
+  2. Keep NVMe-oF storage network (`TCP 8420 / 4421`) intact.
   3. Observe QEMU migration timeout handling.
 - **Pass Criteria:**
   - KubeVirt detects QEMU migration socket timeout and marks migration `Failed`.
@@ -252,21 +275,36 @@ flowchart TD
   - Mayastor CSI driver cleanly releases volume attachment on Worker 2 (no stuck multi-attach locks).
   - Storage volume remains healthy and operational.
 
-### Scenario 6: Exclusive Write Safety Verification (Hypervisor Serialization Audit)
-- **Objective:** Provide empirical proof that despite multi-attach NVMe-oF capabilities, only one node writes to the block volume at any single point in time.
-- **Execution Steps:**
-  1. Deploy an eBPF trace script or `iostat -x 1` logging on both Worker 1 and Worker 2 targeting the raw block devices (`/dev/nvmeXnY`).
-  2. Trigger clean live migration under heavy write load.
-  3. Collate timestamped write sector counts (`wkB/s`, `w/s`) from both worker nodes across all 4 phases:
-     - Phase A: Pre-migration execution.
-     - Phase B: Iterative memory pre-copy.
-     - Phase C: QEMU pause & cutover window.
-     - Phase D: Post-migration execution on destination.
+### Scenario 6: Evidence-Based Exclusive Write Safety Verification
+- **Objective:** Audit empirical evidence of hypervisor write serialization to verify that no unsafe concurrent writes occur across source and destination nodes during live migration.
+- **Methodology (Multi-Layer Verification):**
+  1. **Layer 1: KubeVirt State Transition Audit:**
+     - Record high-resolution timestamps of `VirtualMachineInstanceMigration` phase transitions (`Scheduling` $\rightarrow$ `PreparingTarget` $\rightarrow$ `TargetReady` $\rightarrow$ `Running` $\rightarrow$ `Paused` $\rightarrow$ `Completed`).
+  2. **Layer 2: QEMU QMP Lifecycle Event Logging:**
+     - Monitor the QMP socket on both nodes to log the exact microsecond timestamp of the source QEMU `STOP` event (vCPUs frozen) and target QEMU `RESUME` event (guest execution resumed).
+  3. **Layer 3: Mayastor Multi-Attach Session Observation:**
+     - Track `nvme list-subsys` and CSI `VolumeAttachment` lifecycle to document the duration of the multi-attach overlap window.
+  4. **Layer 4: In-Guest Monotonic Sequence Writer:**
+     - Deploy a synthetic guest process (`seq-writer`) issuing synchronous direct I/O writes (`O_DIRECT | O_SYNC`) with a 512-byte payload structured as:
+       ```text
+       [Sequence Number: uint64] [Node Boot Epoch: uint64] [Timestamp: uint64] [Payload CRC32C: uint32]
+       ```
+     - Sequence numbers increment strictly by 1 ($1, 2, 3, \dots, K$).
+  5. **Layer 5: Post-Migration End-to-End Data Verification:**
+     - Read back the entire written sequence space post-migration.
+     - Validate:
+       - Strictly monotonic sequence numbering with **zero skipped, duplicated, or out-of-order sequence numbers**.
+       - Zero torn blocks or CRC32C verification failures.
+       - Correlation between the transition point in the sequence log and the QMP `STOP`/`RESUME` timestamp window.
+- **Measurement Boundaries & Known Limitations:**
+  - Host clock synchronization relies on NTP/chrony; real-world inter-node clock drift typically ranges from $0.5\text{ ms}$ to $2.0\text{ ms}$.
+  - System-level I/O sampling (eBPF or block layer tracing) reflects kernel ring buffer polling intervals.
+  - **Engineering Rigor Statement:** This test protocol is designed to detect *empirical evidence of unsafe concurrent writers* if present. It does not assert a theoretical mathematical proof of "zero-millisecond" simultaneity beyond the measurement resolution of the physical clocks and monitoring probes.
 - **Pass Criteria:**
-  - Phase A & B: 100% of write I/O originates from Worker 1; Worker 2 write rate is exactly **0 kB/s**.
-  - Phase C: Write rate on both nodes drops to **0 kB/s** during QEMU guest pause.
-  - Phase D: 100% of write I/O originates from Worker 2; Worker 1 write rate drops to exactly **0 kB/s**.
-  - Overlap verification: Total duration where both nodes issue writes simultaneously is exactly **0.000 milliseconds**.
+  - Zero sequence number clobbering, gaps, or reversals.
+  - 100% CRC32C payload match.
+  - QMP `STOP` event strictly precedes target QMP `RESUME` event.
+  - No evidence of overlapping concurrent block writes during the migration window.
 
 ---
 
@@ -274,7 +312,7 @@ flowchart TD
 
 | Architectural Evaluation Dimension | Architecture 1: Native Mayastor RWX Block | Architecture 2: NFS-Backed RWX Gateway |
 | :--- | :--- | :--- |
-| **Upstream Support Status** | **EXPERIMENTAL** (OpenEBS 4.6+ / Mayastor v2.11+) | **DOCUMENTED / STABLE** (CSI NFS Driver) |
+| **Upstream Support Status** | **EXPERIMENTAL** (OpenEBS 4.7+ / Mayastor v2.12.2) | **DOCUMENTED / STABLE** (CSI NFS Driver) |
 | **Supported Volume Mode** | Raw Block Only (`volumeMode: Block`) | Filesystem Only (`volumeMode: Filesystem`) |
 | **Protocol Overhead** | **Zero:** Direct kernel NVMe-oF initiator $\rightarrow$ SPDK target | **High:** Linux VFS + RPC encoding + NFS Server $\rightarrow$ NVMe-oF |
 | **Estimated 4k Random Write IOPS** | **High:** ~120,000 – 250,000+ IOPS (Near wire speed) | **Moderate:** ~25,000 – 45,000 IOPS |
