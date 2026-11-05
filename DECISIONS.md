@@ -221,30 +221,31 @@
 
 ## ADR-010: Supported Modern Software Stack Baseline
 
-- **Status:** PROPOSED / RECONCILED (Chunk 1.10 Final Reconciliation)
+- **Status:** PROPOSED / AUDITED & RECONCILED (Chunk 1.11 Final Baseline & Evidence Closure)
 - **Date:** 2026-11-05
 - **Context:**  
-  The project requires a currently supported, technically defensible software stack in late 2026. The intersection between Kubernetes supported lifecycle, KubeVirt compatibility, OpenEBS Mayastor release testing, container runtimes, and Linux kernel drivers must be established without relying on EOL software or unvalidated bleeding-edge releases. Upstream containerd's official Kubernetes matrix recommends containerd 2.2 for K8s 1.35 and containerd 2.3 for K8s 1.36+.
+  The project requires a currently supported, technically defensible software stack in late 2026. The intersection between Kubernetes supported lifecycle, KubeVirt compatibility, OpenEBS Mayastor release testing, container runtimes, and Linux kernel drivers must be established without relying on EOL software or unvalidated bleeding-edge releases. Upstream containerd's official Kubernetes matrix recommends containerd 2.2 for K8s 1.35 and containerd 2.3 for K8s 1.36+. Importantly, containerd 2.2 reached upstream EOL on November 6, 2026. Kubernetes 1.37 is excluded due to lack of KubeVirt/Mayastor qualification. Published OpenEBS umbrella chart mappings must also be verified against official release artifacts.
 - **Options Considered:**
-  1. *Candidate A (Storage-Verified Intersection):*
+  1. *Candidate B (Preferred Experimental Qualification Target):*
+     - Kubernetes: v1.36.x (Active support through late June 2027).
+     - Container Runtime: `containerd` 2.3.x LTS (supported through April 30, 2028; officially recommended for K8s 1.36+).
+     - Virtualization: KubeVirt v1.9.x (built for K8s 1.36) + CDI v1.61.x.
+     - CNI: Calico v3.33 (officially tested for K8s 1.35–1.37).
+     - Storage Engine: OpenEBS v4.6.x (subchart Mayastor v2.12.2, `io-engine:v2.12.2`; qualification gap: untested on K8s 1.36, to be experimentally evaluated).
+  2. *Candidate A (Storage-Tested Comparison Baseline Only):*
      - Kubernetes: v1.35.x (Active support through February 28, 2027; verified by Mayastor v2.12.2 CI E2E on v1.35.6).
-     - Container Runtime: `containerd` 2.2.x (matches containerd matrix for 1.35, but reaches upstream EOL on November 6, 2026) or `containerd` 2.3 LTS (backward-compatible CRI v1, but unrecommended on 1.35).
-     - Storage Engine: OpenEBS v4.7.0 (Mayastor v2.12.2).
+     - Container Runtime: `containerd` 2.2.x (matches containerd matrix for 1.35, but reached upstream EOL on November 6, 2026; unviable for new production deployments).
+     - Storage Engine: OpenEBS v4.6.x (Mayastor subchart v2.12.2).
      - Virtualization: KubeVirt v1.8.x / v1.9.x + CDI v1.61.x.
      - CNI: Calico v3.33.
-  2. *Candidate B (Platform-LTS Intersection):*
-     - Kubernetes: v1.36.x (Active support through late June 2027).
-     - Container Runtime: `containerd` 2.3 LTS (supported through April 30, 2028; officially recommended for K8s 1.36+).
-     - Virtualization: KubeVirt v1.9.x (qualified on K8s 1.36).
-     - CNI: Calico v3.33.
-     - Storage Engine: OpenEBS v4.7.0 (Mayastor v2.12.2; qualification gap: untested on K8s 1.36).
-  3. *EOL Releases (Kubernetes 1.28 / 1.29 / 1.34, containerd 1.7.x):* Deprecated and unmaintained upstream; rejected.
+  3. *Candidate C (Kubernetes 1.37.x + containerd 2.4.x):* Excluded; KubeVirt 1.9 and Mayastor 2.12.2 have no documented qualification on K8s 1.37.
+  4. *EOL Releases (Kubernetes 1.28 / 1.29 / 1.34, containerd 1.7.x):* Deprecated and unmaintained upstream; rejected.
 - **Decision:**  
-  Adopt a Two-Tier Strategy: Candidate A serves as the storage-verified baseline (testing containerd 2.3 LTS for backward compatibility in Chunk 2 pre-flight), while Candidate B serves as the platform-LTS alternative subject to Mayastor qualification on Kubernetes 1.36.
+  Establish **Candidate B as the preferred experimental qualification target** for deployment. Candidate A is retained strictly as an upstream storage-tested comparison baseline. Published OpenEBS chart mapping is verified as **OpenEBS umbrella chart v4.6.x** (bundling Mayastor subchart v2.12.2, `io-engine:v2.12.2`), formally correcting previous unreleased "v4.7.0" references.
 - **Reasoning:**  
-  Candidate A guarantees that the complex distributed storage engine (Mayastor 2.12.2) and its SPDK Nexus multi-attach data path run against the exact Kubernetes release (1.35.6) validated in upstream CI, while Candidate B provides an upgrade path if institutional requirements mandate an active Kubernetes lifecycle beyond February 2027.
+  Because containerd 2.2 reached upstream EOL on November 6, 2026, Candidate A cannot be recommended as a new deployment target. containerd 2.3 LTS is explicitly recommended by containerd maintainers for Kubernetes 1.36+, and KubeVirt 1.9 is compiled for Kubernetes 1.36. Candidate B offers healthy lifecycle alignment through mid-2027/2028. The only qualification gap is Mayastor 2.12.2 CI testing on Kubernetes 1.36 (documented up to 1.35.6), which will be transparently evaluated and tested during Chunk 2 deployment rather than masked with false claims.
 - **Consequences:**  
-  - *Positive:* 100% transparent; eliminates EOL software; establishes exact qualification boundaries for both storage and runtime layers.
-  - *Negative:* Requires empirical pre-flight validation in Chunk 2 before full cluster bootstrap.
+  - *Positive:* 100% compliant with zero-EOL governance; aligns with upstream containerd and KubeVirt support lifecycles; establishes clear experimental qualification objectives.
+  - *Negative:* Mayastor CRI/CSI interaction on Kubernetes 1.36 requires empirical verification in Chunk 2 pre-flight.
 - **Validation Evidence:**  
   Documented in `docs/compatibility-matrix.md`, `docs/network-and-virtualization-requirements.md`, `docs/storage-architecture-analysis.md`, and `docs/final-deployment-proposal.md`.

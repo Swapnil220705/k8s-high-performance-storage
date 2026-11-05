@@ -3,7 +3,7 @@
 **Project Name:** Deploy High-Performance Storage for Kubernetes  
 **Project ID:** SWFW_5S_08  
 **Document Status:** PROPOSED (Target Architecture — Not Yet Deployed or Experimentally Validated)  
-**Last Updated:** 2026-11-05 (Chunk 1.10 Final Reconciliation)  
+**Last Updated:** 2026-11-05 (Chunk 1.11 Final Baseline & Evidence Closure)  
 
 ---
 
@@ -79,25 +79,27 @@ flowchart TB
 - **CPU Architecture:** x86_64; hardware virtualization support (`vmx` for Intel, `svm` for AMD) is mandatory for hardware-accelerated KVM.
   - **Worker CPU Budgeting:** **Minimum 6 physical cores per storage worker node** (2 cores dedicated to SPDK busy-polling running at 100% continuous CPU utilization, 2 cores for host OS/Kubernetes/daemons, and 2 cores for guest VM vCPUs). Preferred: **8–16 physical cores** for high-throughput benchmarking. Four physical cores is explicitly rejected as a comfortable benchmark baseline.
 - **Memory Requirements (Exact Decimal-to-Binary Math & Ranges):**
-  - **16 GB Physical Host:** $16 \times 10^9 / 1024^3 = \mathbf{14.90\text{ GiB}}$ total installed.
-  - **32 GB Physical Host:** $32 \times 10^9 / 1024^3 = \mathbf{29.80\text{ GiB}}$ total installed.
+  - **16 GB Physical Host:** $16 \times 10^9 / 1024^3 = \mathbf{14.90\text{ GiB}}$ raw capacity installed.
+  - **32 GB Physical Host:** $32 \times 10^9 / 1024^3 = \mathbf{29.80\text{ GiB}}$ raw capacity installed.
   - **Firmware/Hardware Reservations:** Typically $0.20 - 0.50\text{ GiB}$ consumed by UEFI, ACPI, and PCI MMIO. Visible usable memory (`MemTotal`): $\approx \mathbf{14.40 - 14.70\text{ GiB}}$ on 16 GB hosts, and $\approx \mathbf{29.30 - 29.60\text{ GiB}}$ on 32 GB hosts.
+  - **Planning Estimate Disclaimer:** *These figures represent planning estimates based on typical server hardware; exact `MemTotal` and live runtime overhead must be confirmed on target laboratory hardware via `/proc/meminfo` during Chunk 2.*
   - **Static Base Stack:** HugePages (2.00 GiB) + Mayastor Heap (1.00–1.50 GiB) + Host OS/K8s/containerd daemons (2.30–4.00 GiB) + KubeVirt virt-handler (0.40–0.80 GiB) + Monitoring (0.20–0.40 GiB) = **5.90 – 8.70 GiB consumed before starting any VM**.
   - **Guest VM Footprint:** Guest RAM (4.00 GiB) + QEMU process overhead (0.60–1.20 GiB) = **4.60 – 5.20 GiB**.
-  - **Live Migration Asymmetry:**
-    - Source node consumes **10.70 – 14.45 GiB** during pre-copy.
-    - Destination node requires **10.70 – 14.40 GiB** if idle (Case 1).
-    - If destination already hosts an active VM (Case 2), peak memory reaches **15.30 – 19.60 GiB**, causing **guaranteed OOM failure on 16 GB hosts**.
-    - **Conclusion:** 16 GB is strictly limited to single-VM evaluation; **32 GB physical RAM per worker node is mandatory** for multi-VM live migration and benchmarking.
+  - **Live Migration Headroom & Asymmetry:**
+    - Source node consumes **10.70 – 14.45 GiB** during pre-copy. Headroom on 16 GB host (`MemTotal`: $14.40 - 14.70\text{ GiB}$): **$-0.05\text{ to }+4.00\text{ GiB}$** (drops into $-0.05\text{ GiB}$ deficit under worst-case peak consumption). Headroom on 32 GB host: **$+14.85\text{ to }+18.90\text{ GiB}$**.
+    - Destination node (Case 1: Target Node Initially Idle) requires **10.70 – 14.40 GiB**. Headroom on 16 GB host: **$0.00\text{ to }+4.00\text{ GiB}$** (reaches $0.00\text{ GiB}$ at upper bound). Headroom on 32 GB host: **$+14.90\text{ to }+18.90\text{ GiB}$**.
+    - Destination node (Case 2: Target Node Already Hosts an Existing 4 GiB VM) reaches **15.30 – 19.60 GiB**, yielding **$-0.60\text{ to }-5.20\text{ GiB}$ (FATAL DEFICIT)** on 16 GB hosts.
+    - **Conclusion:** Under no circumstances can a 16 GB worker node host a migration target if another VM is already running. **32 GB physical RAM per worker node is the mandatory recommended standard for production and benchmarking**.
 
 ### 2.2 Network Topology & Segmentation
-The intended deployment separates cluster traffic into logical planes:
-1. **Cluster Management & Pod Network:** Standard 1 Gbps / 10 Gbps Ethernet for Kubernetes API communication, pod-to-pod CNI traffic (Calico v3.33 BGP on TCP 179), and management queries.
-2. **Storage Data Fabric (NVMe-oF):** Low-latency network mesh carrying NVMe over TCP frames between Mayastor Nexus and worker node replicas on **TCP 8420** and **TCP 4421**.
+The intended deployment separates cluster traffic into logical planes across the **canonical 20-port matrix** (10 physical host firewall rules, 10 cluster-internal/loopback services):
+1. **Cluster Management & Pod Network:** Standard 1 Gbps / 10 Gbps Ethernet for Kubernetes API communication (TCP 6443), etcd peer/client (TCP 2379–2380), Kubelet (TCP 10250), pod-to-pod CNI traffic (Calico v3.33 BGP on TCP 179), and management queries.
+2. **Storage Data Fabric (NVMe-oF):** Low-latency network mesh carrying NVMe over TCP frames between Mayastor Nexus and worker node replicas on **TCP 8420** and **TCP 4421** (gRPC control on TCP 10124).
    - *Target Configuration:* MTU 9000 (Jumbo Frames) enabled across storage interfaces to minimize packet fragmentation overhead under high-throughput I/O bursts.
    - *Latency Objective:* Sub-millisecond node-to-node round-trip time (RTT) to prevent replication acknowledgment stalls.
 3. **Hypervisor Live-Migration Plane:** Dedicated QEMU direct TCP streaming on **TCP 49152–49215**.
-4. **Internal Monitoring Plane:** Prometheus (9090), Grafana (3000), and exporters (9100, 9502) restricted to internal management access only; never exposed publicly.
+4. **Internal Monitoring Plane:** Prometheus (9090), Grafana (3000), and exporters (9100, 9502) restricted to internal cluster-internal access only; never exposed on host firewalls.
+5. **Multus Secondary Networking:** Implemented via local in-process UNIX domain socket calls to CNI plugins (**zero network ports required**).
 
 ---
 
@@ -107,13 +109,12 @@ The intended deployment separates cluster traffic into logical planes:
 - **Target Software Baseline Specification (ADR-010):**
   - **Host Operating System:** Ubuntu Server 24.04 LTS (Noble Numbat).
   - **Linux Kernel:** 6.8.0 LTS with optimized in-tree `nvme-tcp` and `/dev/kvm`.
-  - **Kubernetes Candidate Evaluation:**
-    - **Candidate A (Storage-Verified):** Kubernetes **v1.35.x** (Active support until Feb 28, 2027; verified by Mayastor 2.12.2 E2E CI on 1.35.6).
-    - **Candidate B (Platform-LTS):** Kubernetes **v1.36.x** (Active support until June 2027; supported by containerd 2.3 LTS and KubeVirt 1.9, but unverified by Mayastor E2E).
-  - **Container Runtime:** **`containerd` 2.3 LTS** (supported through April 30, 2028; officially recommended for K8s 1.36+; backward-compatible CRI v1 on 1.35; containerd 2.2 reaches EOL on November 6, 2026).
-  - **CNI Plugin:** **Calico v3.33** (officially tested for Kubernetes v1.35–v1.37; pure routed BGP networking without VXLAN encapsulation penalty).
-  - **Storage Engine:** OpenEBS v4.7.0 (Mayastor v2.12.2) with native experimental RWX block volume support.
-  - **Virtualization Engine:** KubeVirt v1.8.x or v1.9.x + CDI v1.61.x.
+  - **Candidate Selection:**
+    - **Preferred Qualification Target (Candidate B):** Kubernetes **v1.36.x** + containerd **2.3.x LTS** (supported through April 30, 2028; officially recommended for K8s 1.36+) + KubeVirt **v1.9.x** + Calico **v3.33** + OpenEBS **v4.6.x** (Mayastor subchart v2.12.2, `io-engine:v2.12.2`). Qualification gap of Mayastor on K8s 1.36 will be experimentally evaluated.
+    - **Comparison Baseline (Candidate A):** Kubernetes **v1.35.x** + containerd **2.2.x** (reached EOL on Nov 6, 2026; unviable for new deployments) + Mayastor v2.12.2 (E2E CI tested on 1.35.6).
+    - **Exclusion:** Kubernetes 1.37.x is excluded due to lack of KubeVirt/Mayastor qualification.
+  - **Storage Engine:** OpenEBS v4.6.x (Mayastor subchart v2.12.2) with native experimental RWX block volume support.
+  - **Virtualization Engine:** KubeVirt v1.9.x (or v1.8.x) + CDI v1.61.x.
 - **Node Topology:**
   - **1 Dedicated Control Plane Node (Node 0):** Hosts API server, `etcd` (Raft consensus), controller manager, scheduler, and Mayastor control plane agents.
   - **3 Dedicated Worker Nodes (Nodes 1, 2, 3):** Labeled and configured for storage and virtualization workloads (`openebs.io/engine=mayastor`, `kubevirt.io/schedulable=true`), each with 2 GiB HugePages pre-allocated and dedicated NVMe/SSD raw block devices.
@@ -182,11 +183,11 @@ sequenceDiagram
   - If 1 worker node drops offline, the volume transitions to **Degraded** status (2 surviving replicas).
   - The volume is **not** in a fully protected state; client I/O continues, but resilience is impaired.
   - **Anti-Affinity Constraint:** Mayastor enforces pool and node anti-affinity. Because only 2 nodes remain and both already host replicas, **Mayastor cannot allocate a replacement replica**. The volume remains Degraded until the failed node recovers or a 4th worker is joined.
-- **Configurable Rebuild Timers:**
-  - **Partial Rebuild Wait Period (`child_wait_period` / `--faulted-child-wait-period`):** Configured on the Mayastor `io-engine` Nexus. Baseline default is **10 minutes** (`10m`). If the node reconnects within this period, the Nexus replays dirty ranges from the write log (**Partial Rebuild**).
-  - **Node Unreachable Grace Period (`rebuild.grace_period` / `--node-unreachable-timeout`):** Configured on `mayastor-agent-core`. Baseline default is **5 to 10 minutes**. Governs how long the orchestrator waits before attempting to relocate pools or declare replicas permanently lost.
+- **Configurable Rebuild Timers & Disconnection Governance:**
+  - **Partial Rebuild Wait Period (`--faulted-child-wait-period`):** Configured on `mayastor-agent-core` (default **10 minutes** / `600s`). If a faulted replica reconnects within this period, the Nexus replays dirty ranges from the write log (**Partial Rebuild**).
+  - **Node Disconnection Governance:** Standalone parameter `--node-unreachable-timeout` is **unverified / non-existent** in upstream Mayastor. Node disconnection is governed by Kubernetes node eviction tolerations (`tolerations.node.kubernetes.io/unreachable`, default 300s) and NVMe initiator timeout (`ctrl_loss_tmo`, default 1800s or 120s).
   - **Published vs. Unpublished Volumes:** Published volumes actively accumulate dirty extents; unpublished volumes are quiescent and compare replica generation counters upon next publication.
-- **Full Rebuild Triggers:** Grace period timeout ($>10\text{m}$), disk pool destruction/replacement, Nexus crash while child is faulted, or write log buffer overflow.
+- **Full Rebuild Triggers:** Faulted child wait period expiration ($>10\text{m}$), disk pool destruction/replacement, Nexus crash while child is faulted, or write log buffer overflow.
 - **Decoupling from etcd Quorum:** Storage data plane and Nexus replication operate independently of `etcd` Raft consensus. Data-plane I/O continues even if the control plane temporarily loses quorum.
 
 ---
@@ -231,12 +232,12 @@ flowchart LR
 ```
 
 ### 6.2 Proposed RWX Integration Strategies
-1. **Option A: Native Mayastor RWX Block Volumes (Primary Innovation Target — OpenEBS 4.7+ / Mayastor v2.12.2)**
+1. **Option A: Native Mayastor RWX Block Volumes (Primary Innovation Target — OpenEBS v4.6.x / Mayastor v2.12.2)**
    - *Mechanism:* Mayastor exposes an NVMe-oF target accepting simultaneous attachments from both source and destination worker node `nvme-tcp` initiators (`volumeMode: Block`, `accessModes: [ReadWriteMany]`).
    - *Concurrency & Fencing:* Concurrency safety relies on **QEMU / KubeVirt hypervisor serialization** (only the active guest VM issues writes; the target VM is in pre-copy receive mode until cutover).
    - *Performance:* Delivers near-bare-metal NVMe wire throughput and sub-millisecond tail latency.
    - *Status:* Upstream **EXPERIMENTAL**. Evaluated across the **6-Scenario Test Suite**.
-   - *Evidence-Based Safety Audit:* Audited via multi-layer event correlation (KubeVirt state machine, QEMU QMP `STOP`/`RESUME` events, Mayastor multi-attach logs, in-guest strictly monotonic sequence writes, and CRC32C verification) under documented clock synchronization boundaries.
+   - *Evidence-Based Safety Audit:* Audited via multi-layer event correlation (KubeVirt state machine, QEMU QMP `STOP`/`RESUME` events, Mayastor multi-attach logs, in-guest strictly monotonic sequence writes with 512-byte fixed binary records, and CRC32C verification) under documented clock synchronization boundaries.
 2. **Option B: Clustered NFS Gateway RWX Layer (Conservative Fallback Baseline)**
    - *Mechanism:* An NFS server pod mounts a Mayastor RWO volume, formats it (ext4/XFS), and exports an RWX filesystem via `csi-driver-nfs`.
    - *Trade-off:* Introduces Linux VFS overhead and NFSv4 RPC latency (~25,000–45,000 IOPS vs >150,000 IOPS on block), but provides proven, standards-compliant POSIX file locking.
@@ -279,5 +280,5 @@ To provide empirical evidence and validate architectural claims, an integrated P
 | **SPDK / NVMe-oF** | SPDK delivers sub-10 µs latency on bare-metal NVMe. | Mayastor running in Kubernetes worker pods with 2 dedicated busy-polling cores. | Lab hardware NVMe performance under containerized SPDK polling threads. |
 | **Replication & Rebuild** | Mayastor supports 3-way synchronous mirroring and write-log partial rebuilds. | Replicas across 3 worker nodes; 10m grace period. | Rebuild overhead and latency impact during network saturation; 3-node degradation risk. |
 | **KubeVirt VM Launch** | KubeVirt runs Linux guest OS inside QEMU pods with hardware `/dev/kvm`. | Ubuntu 24.04 cloud images booted from Mayastor PV. | Driver compatibility between guest OS and NVMe-attached virtio-scsi/virtio-blk. |
-| **Native RWX Migration** | Native RWX block volume supported in OpenEBS 4.7+ / Mayastor v2.12.2. | Multi-attach NVMe-oF evaluated across 6 live-migration scenarios. | Edge cases during inter-node network partitions; experimental status. |
+| **Native RWX Migration** | Native RWX block volume supported in OpenEBS v4.6.x (Mayastor subchart v2.12.2). | Multi-attach NVMe-oF evaluated across 6 live-migration scenarios. | Edge cases during inter-node network partitions; experimental status. |
 | **Hot-Plugging** | KubeVirt supports CPU, memory, volume, and interface hot-plug. | Scripted test harness evaluating guest kernel event recognition. | Guest kernel ACPI responsiveness without VM reboot. |

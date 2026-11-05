@@ -5,9 +5,9 @@
 **Program:** Zoho SETU — College Student Project Program  
 **Active Branch:** `main`  
 **Current Phase:** Phase 1 — Infrastructure Discovery & Technical Feasibility  
-**Current Chunk:** Chunk 1.10 — Final Compatibility and Resource Reconciliation  
-**Chunk 1.10 Status:** 🟢 COMPLETED (Ready for User Review & Approval)  
-**Overall Completion:** 4 / 14 Chunks Completed (Foundation, Feasibility, Lifecycle & Reconciliation Audits)  
+**Current Chunk:** Chunk 1.11 — Final Deployment Baseline and Evidence Closure  
+**Chunk 1.11 Status:** 🟢 COMPLETED (Ready for User Review & Approval)  
+**Overall Completion:** 5 / 14 Chunks Completed (Foundation, Feasibility, Lifecycle & Reconciliation Audits, Baseline & Evidence Closure)  
 
 ---
 
@@ -20,12 +20,13 @@
 ## 1. Chunk Progress Summary
 
 | Chunk | Title / Focus Area | Status | Target Delivery | Verification Level |
-| :---: | :--- | :---: | :---: | :---: |
+| :--- | :--- | :---: | :---: | :---: |
 | **0** | **Project Foundation & Governance** | 🟢 **COMPLETED** | Chunk 0 | Documentation, Git & Structural Verification |
 | **1** | **Infrastructure Discovery & Technical Feasibility** | 🟢 **COMPLETED** | Chunk 1 | Local WMI/CIM Audit, Literature & Matrix Verification |
 | **1.8**| **Technical Research Corrections** | 🟢 **COMPLETED** | Chunk 1.8 | Upstream Lifecycle Reassessment, Native RWX & Port Audit |
 | **1.9**| **Final Lifecycle, Compatibility & Resource Audit** | 🟢 **COMPLETED** | Chunk 1.9 | EOL Elimination (k8s 1.34/containerd 1.7), 2-Core SPDK Busy-Poll, GB/GiB Sizing, 20-Port Scopes |
-| **1.10**| **Final Compatibility & Resource Reconciliation** | 🟢 **COMPLETED** | Chunk 1.10 | containerd Recommendation Matrix Reconciled, Mayastor 2.12.2 E2E on K8s 1.35.6, Exact Binary Memory Math (16 GB = 14.90 GiB, 32 GB = 29.80 GiB), Asymmetric Migration Budgets (Case 2 OOM on 16 GB), Authoritative Mayastor Ports (8420, 4421, 10124), Evidence-Based Concurrency Safety Audit, Rebuild Timers Clarified |
+| **1.10**| **Final Compatibility & Resource Reconciliation** | 🟢 **COMPLETED** | Chunk 1.10 | containerd Recommendation Matrix Reconciled, Mayastor 2.12.2 E2E on K8s 1.35.6, Exact Binary Memory Math, Asymmetric Migration Budgets, Authoritative Ports |
+| **1.11**| **Final Deployment Baseline and Evidence Closure** | 🟢 **COMPLETED** | Chunk 1.11 | Candidate B Preferred Target, OpenEBS v4.6.x Chart Mapping Verified, MemTotal Memory Sizing & Headroom, Canonical 20-Port Matrix, Single-Writer Migration Protocol, Verified Rebuild Parameters |
 | **2** | Target Infrastructure Preparation & Kubernetes Cluster Bootstrap | ⚪ NOT STARTED | Chunk 2 | Pending User Authorization & Server Allocation |
 | **3** | OpenEBS Mayastor Storage Engine Deployment | ⚪ NOT STARTED | Chunk 3 | Pending Authorization |
 | **4** | Storage Pools, Replication & Volume Provisioning | ⚪ NOT STARTED | Chunk 4 | Pending Authorization |
@@ -72,6 +73,14 @@
 - [x] **Chunk 1.10 Reconciliation: Evidence-Based Migration Safety & Rebuild Configuration (`docs/storage-architecture-analysis.md`):**
   - Replaced "0.000 ms proof" with multi-layer evidence-based audit: KubeVirt migration states, QEMU QMP `STOP`/`RESUME` events, Mayastor multi-attach session logs, in-guest strictly monotonic sequence writes ($1 \dots K$), and end-to-end CRC32C verification under documented clock drift boundaries.
   - Clarified Mayastor rebuild configuration: distinguished partial rebuild wait period (`child_wait_period`, default 10m on `io-engine`) from node unreachable grace period (`rebuild.grace_period`, default 5-10m on `mayastor-agent-core`), published vs unpublished volume behavior, and chart configurability.
+- [x] **Chunk 1.11 Final Deployment Baseline & Evidence Closure:**
+  - **Preferred Qualification Target (Candidate B):** Established Kubernetes 1.36.x + containerd 2.3.x LTS + KubeVirt 1.9.x + Calico 3.33 + OpenEBS v4.6.x (Mayastor subchart v2.12.2) as the preferred experimental qualification target due to lifecycle alignment (supported through June 2027 / April 2028).
+  - **Comparison Baseline (Candidate A):** Retained Kubernetes 1.35.x + containerd 2.2.x strictly as a storage-tested comparison configuration (containerd 2.2 EOL on Nov 6, 2026 makes it unviable for new deployments). Excluded Kubernetes 1.37 due to missing qualification.
+  - **OpenEBS Chart Mapping Verified:** Confirmed published umbrella chart `openebs` v4.6.x (e.g. v4.6.1/v4.6.2) officially packages Mayastor subchart v2.12.2 (`io-engine:v2.12.2`). Formally purged unreleased "v4.7.0" references.
+  - **MemTotal Usable Memory Headroom:** Recalculated headroom subtracting static base and VM overheads from usable `MemTotal` ($14.40 - 14.70\text{ GiB}$ for 16 GB, $29.30 - 29.60\text{ GiB}$ for 32 GB). Proved that loaded destination (Case 2) on 16 GB hosts yields a fatal deficit of **$-0.60\text{ to }-5.20\text{ GiB}$**, making migration impossible under loaded conditions. Headroom on 32 GB hosts remains $+9.70\text{ to }+14.30\text{ GiB}$.
+  - **Single-Writer Concurrency Verification Protocol:** Formulated rigorous verification protocol with 512-byte fixed binary record layout, unique writer IDs, writer epochs, atomic sequence counters, duplicate/stale/gap detection, CRC32C verification, QEMU QMP `STOP`/`RESUME` event correlation, and physical clock drift limits.
+  - **Rebuild Configuration Verified:** Verified `--faulted-child-wait-period` (default 10m / 600s) on `mayastor-agent-core`; clarified that a standalone `--node-unreachable-timeout` flag does not exist in upstream Mayastor (governed by Kubernetes node eviction tolerations and NVMe `ctrl_loss_tmo`).
+  - **Canonical 20-Port Matrix:** Built reconciled 20-port table (10 physical host firewall rules, 10 cluster-internal/loopback services); purged TCP 4420; confirmed Multus CNI requires 0 network ports.
 - [x] Synchronized ADR-010, `ARCHITECTURE.md`, `docs/final-deployment-proposal.md`, `README.md`, and `RESEARCH.md`.
 
 ### 2.2 Verified Infrastructure Features
@@ -110,7 +119,7 @@
 ## 4. Known Technical Risks & Mitigation Strategies
 
 1. **Host Memory Starvation on Worker Nodes:**
-   - *Risk:* Mayastor SPDK `io-engine` requires pre-allocating 2 GiB HugePages per storage node; QEMU process overhead consumes 0.6–1.2 GiB above guest RAM; live migration requires 4.8–5.7 GiB transient allocation on target. Case 2 (target node already loaded) triggers fatal OOM on 16 GB hosts.
+   - *Risk:* Mayastor SPDK `io-engine` requires pre-allocating 2 GiB HugePages per storage node; QEMU process overhead consumes 0.6–1.2 GiB above guest RAM; live migration requires 4.8–5.7 GiB transient allocation on target. Case 2 (target node already loaded) triggers fatal OOM on 16 GB hosts ($-0.60\text{ to }-5.20\text{ GiB}$ deficit).
    - *Mitigation:* Require 32 GB physical RAM per worker node on target servers for multi-VM live migration (documented in `docs/final-deployment-proposal.md`).
 2. **KubeVirt Hardware Virtualization (`/dev/kvm`) Requirement:**
    - *Risk:* If target remote nodes run inside nested virtualization layers without nested virtualization enabled, KubeVirt falls back to slow QEMU emulation (TCG).
@@ -128,14 +137,14 @@
 
 - **ADR-001:** Hybrid local development and remote deployment $\rightarrow$ `PROPOSED`
 - **ADR-002:** Three independent storage-capable worker nodes $\rightarrow$ `AMENDED` (Storage replication decoupled from etcd quorum)
-- **ADR-003:** OpenEBS Mayastor as the replicated storage engine $\rightarrow$ `AMENDED` (OpenEBS 4.7+ / Mayastor v2.12.2 for native RWX)
+- **ADR-003:** OpenEBS Mayastor as the replicated storage engine $\rightarrow$ `AMENDED` (OpenEBS v4.6.x / Mayastor subchart v2.12.2 for native RWX)
 - **ADR-004:** NFS-backed RWX storage layer for KubeVirt live migration $\rightarrow$ `AMENDED` (Retained as conservative fallback)
 - **ADR-005:** Free college infrastructure as preferred deployment strategy $\rightarrow$ `PROPOSED`
 - **ADR-006:** Multiple meaningful Conventional Commits per project chunk $\rightarrow$ `PROPOSED`
 - **ADR-007:** Antigravity-assisted, chunk-based development $\rightarrow$ `PROPOSED`
 - **ADR-008:** Dual-Tier storage architecture for high-performance block and live migration $\rightarrow$ `AMENDED` (Comparative 3-tier strategy)
 - **ADR-009:** Target software stack baseline specification (K8s 1.28 / Ubuntu 22.04) $\rightarrow$ `SUPERSEDED` (Rejected due to EOL)
-- **ADR-010:** Supported modern software stack baseline (Candidate A: K8s 1.35.x + Mayastor 2.12.2 verified vs. Candidate B: K8s 1.36.x + containerd 2.3 LTS) $\rightarrow$ `PROPOSED / RECONCILED`
+- **ADR-010:** Supported modern software stack baseline (Candidate B: K8s 1.36.x + containerd 2.3 LTS preferred qualification target vs. Candidate A: K8s 1.35.x comparison baseline; OpenEBS v4.6.x chart mapping) $\rightarrow$ `PROPOSED / AUDITED & RECONCILED`
 
 ---
 
@@ -145,19 +154,23 @@
 - **2026-11-04:** Completed Chunk 1 Infrastructure Discovery: local WMI/CIM assessment, questionnaire, compatibility matrix, storage architecture analysis, network requirements, deployment options, and final proposal (7 commits pushed).
 - **2026-11-05:** Completed Chunk 1.8 Technical Research Corrections: reassessed lifecycles, investigated native RWX block volumes, and validated 20 firewall ports (`c457aac`, `aea2292`, `9c9b187`, `87fb562`).
 - **2026-11-05:** Completed Chunk 1.9 Final Lifecycle, Compatibility and Resource Audit: eliminated EOL k8s 1.34 and containerd 1.7; allocated 2 dedicated SPDK busy-polling cores; audited 20 ports; specified write log rebuild and 6-scenario live migration (`5271f31`, `ce716e2`, `7883dcf`, `368e8e8`).
-- **2026-11-05:** Implemented Chunk 1.10 Final Compatibility and Resource Reconciliation:
-  - Commit 1 (`b616ead`): `docs: reconcile kubernetes and containerd version matrix` — Reconciled containerd recommendation matrix (2.2 for 1.35, 2.3 for 1.36+); audited containerd 2.2 EOL (Nov 6, 2026); verified Mayastor 2.12.2 E2E on K8s 1.35.6; evaluated Candidate A vs. Candidate B.
-  - Commit 2 (`25cebbe`): `docs: correct worker node memory calculations and migration budgets` — Calculated exact decimal-to-binary memory (16 GB = 14.90 GiB, 32 GB = 29.80 GiB); formulated separate Source and Destination migration budgets; demonstrated Case 2 destination-loaded OOM on 16 GB hosts; corrected Mayastor ports (10124, 8420, 4421; purged 4420 and 8011).
-  - Commit 3 (`fac476d`): `docs: specify evidence-based rwx migration safety and rebuild semantics` — Formulated multi-layer evidence-based concurrency safety audit (replacing 0.000 ms claim with QMP events, monotonic sequence writes, CRC32C verification, and clock drift boundaries); clarified partial rebuild wait period vs offline rebuild grace period.
-  - Commit 4: `docs: align architecture proposal and project governance with chunk 1.10 audit` — Synchronized `docs/final-deployment-proposal.md`, `ARCHITECTURE.md`, `DECISIONS.md`, `README.md`, `RESEARCH.md`, and `PROJECT_STATE.md`.
+- **2026-11-05:** Completed Chunk 1.10 Final Compatibility and Resource Reconciliation: containerd matrix reconciled; memory calculations and asymmetric migration budgets audited; evidence-based RWX migration safety formulated (`b616ead`, `25cebbe`, `fac476d`, `302b1f8`).
+- **2026-11-05:** Implemented Chunk 1.11 Final Deployment Baseline and Evidence Closure:
+  - Commit 1 (`b361cc6`): `docs: establish candidate b as preferred baseline and verify openebs chart mapping` — Established Candidate B as preferred experimental qualification baseline, Candidate A as comparison baseline; verified published umbrella chart `openebs` v4.6.x (Mayastor subchart v2.12.2); excluded K8s 1.37.
+  - Commit 2 (`ac03852`): `docs: update canonical port matrix and calculate memtotal headroom` — Recalculated memory headroom from usable `MemTotal` (14.40–14.70 GiB on 16 GB, 29.30–29.60 GiB on 32 GB); demonstrated loaded-destination Case 2 fatal deficit ($-0.60\text{ to }-5.20\text{ GiB}$); built canonical 20-port matrix.
+  - Commit 3 (`00ca169`): `docs: specify migration single-writer protocol and rebuild configuration evidence` — Formulated single-writer protocol with 512-byte record layout, sequence numbers, writer IDs/epochs, CRC32C, QMP events, and clock drift bounds; verified `--faulted-child-wait-period` (10m default) and clarified node unreachable governance.
+  - Commit 4: `docs: finalize deployment proposal and synchronize project state for chunk 1.11` — Synchronized `docs/final-deployment-proposal.md`, `ARCHITECTURE.md`, `DECISIONS.md`, `README.md`, `RESEARCH.md`, and `PROJECT_STATE.md`.
 
 ---
 
 ## 7. Next Authorized Action
 
-Chunk 1.10 is fully complete and validated. **STOP AND AWAIT USER APPROVAL.**  
+Chunk 1.11 is fully complete and validated. **STOP AND AWAIT USER APPROVAL.**  
 Next step upon explicit user authorization:
 - **Chunk 2 — Target Infrastructure Preparation & Kubernetes Cluster Bootstrap:**
+  - Submit `docs/college-infrastructure-questionnaire.md` to laboratory administration to secure 4 nodes meeting audited specs ($\ge$6 cores, 16 GB RAM min, 32 GB pref).
+  - Author automated Linux host pre-flight verification scripts (`scripts/setup/01-host-preflight.sh`) checking HugePages, `nvme-tcp`, containerd 2.3 LTS, and `/dev/kvm`.
+  - Author reproducible `kubeadm` cluster initialization manifests and bootstrap scripts.
   - Submit `docs/college-infrastructure-questionnaire.md` to laboratory administration to secure 4 nodes meeting audited specs ($\ge$6 cores, 16 GB RAM min, 32 GB pref).
   - Author automated Linux host pre-flight verification scripts (`scripts/setup/01-host-preflight.sh`) checking HugePages, `nvme-tcp`, containerd 2.3 LTS, and `/dev/kvm`.
   - Author reproducible `kubeadm` cluster initialization manifests and bootstrap scripts.

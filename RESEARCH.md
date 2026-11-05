@@ -34,7 +34,7 @@
 - **Why It Matters to Our Project:** KubeVirt launches `virt-launcher` pods through containerd; improper cgroup driver alignment (`systemd` vs `cgroupfs`) causes kubelet node instability. Upstream containerd 1.7 reached EOL on September 30, 2026. Official containerd matrix recommends containerd 2.2 for K8s 1.35 and 2.3 for K8s 1.36+.
 - **Official Documentation:** [containerd Documentation](https://containerd.io/docs/)
 - **Important Implementation Questions:** Does `containerd` 2.3 LTS operate seamlessly with Kubernetes 1.35 under CRI v1 despite being outside the 1.35 recommendation matrix, and how does containerd 2.2's November 6, 2026 EOL affect deployment?
-- **Research Status:** Reconciled in Chunk 1.10 (2026-11-05). Evaluated Candidate A (K8s 1.35 + containerd 2.2/2.3) vs. Candidate B (K8s 1.36 + containerd 2.3 LTS).
+- **Research Status:** Reconciled in Chunk 1.10 and finalized in Chunk 1.11 (2026-11-05). Because containerd 2.2 reached upstream EOL on November 6, 2026, Candidate B (Kubernetes 1.36.x + containerd 2.3.x LTS) is established as the preferred experimental qualification target; Candidate A (Kubernetes 1.35.x) is retained strictly as an upstream storage-tested comparison baseline.
 
 ### 4. Kubernetes Networking & CNI (Calico)
 - **What Needs to be Researched:** Pod CIDR allocation, routed BGP networking vs encapsulation, MTU overhead, and Calico v3.33 compatibility.
@@ -62,7 +62,7 @@
 - **Why It Matters to Our Project:** Mayastor is the foundational storage engine responsible for synchronous block replication and NVMe-oF transport.
 - **Official Documentation:** [OpenEBS Documentation](https://openebs.io/docs/) | [Mayastor GitHub Repository](https://github.com/openebs/mayastor)
 - **Important Implementation Questions:** How does Mayastor handle metadata consensus and dynamic Nexus migration if a storage node hosting the active Nexus fails, and how is this decoupled from Kubernetes etcd Raft quorum?
-- **Research Status:** Mayastor v2.12.2 / OpenEBS v4.7.0 evaluated in Chunk 1.10. E2E verification confirmed on Kubernetes 1.35.6. Decoupling from etcd Raft quorum verified. 6-scenario live migration test suite formulated.
+- **Research Status:** Mayastor v2.12.2 evaluated in Chunk 1.10 and verified in Chunk 1.11 (2026-11-05) as bundled in official published OpenEBS umbrella chart v4.6.x (Mayastor subchart v2.12.2, `io-engine:v2.12.2`). E2E verification confirmed on Kubernetes 1.35.6; qualification on Kubernetes 1.36 to be evaluated in Chunk 2. Decoupling from etcd Raft quorum verified. 6-scenario live migration test suite formulated.
 
 ### 8. Storage Performance Development Kit (SPDK)
 - **What Needs to be Researched:** User-space device drivers, Polled Mode Drivers (PMD), lockless ring buffers, hugepage memory mapping, and zero-copy I/O queues.
@@ -76,7 +76,7 @@
 - **Why It Matters to Our Project:** NVMe-oF over TCP serves as the wire protocol carrying block commands between Mayastor Nexus and worker node replicas on TCP 8420 and 4421.
 - **Official Documentation:** [NVM Express Standards](https://nvmexpress.org/specifications/)
 - **Important Implementation Questions:** What kernel parameters (`nvme_core.multipath`, TCP socket buffer sizes) must be tuned on worker nodes to prevent connection timeouts during sustained heavy writes?
-- **Research Status:** Protocol specifications and kernel initiator requirements verified in Chunk 1. Authoritative ports (8420 primary, 4421 secondary) confirmed in Chunk 1.10.
+- **Research Status:** Protocol specifications and kernel initiator requirements verified in Chunk 1. Reconciled in Chunk 1.11 into the canonical 20-port matrix (10 host firewall rules including TCP 8420 & 4421, 10 cluster-internal/loopback services; TCP 4420 purged).
 
 ### 10. DiskPools & Cloud-Native Storage Provisioning
 - **What Needs to be Researched:** Mayastor `DiskPool` CRD lifecycle, SPDK Logical Volume (`lvol`) allocation, pool exhaustion thresholds, and block device discovery.
@@ -90,7 +90,7 @@
 - **Why It Matters to Our Project:** Ensures zero data loss (RPO = 0) and high availability during node or disk failure events.
 - **Official Documentation:** [Mayastor Replicas & Volumes](https://openebs.io/docs/user-guides/mayastor/replicas)
 - **Important Implementation Questions:** What is the measured write latency penalty when switching from 2-way replication ($N=2$) to 3-way replication ($N=3$) under 4k random writes? How does Mayastor handle replica replacement when only 2 nodes remain in a 3-node cluster?
-- **Research Status:** Rebuild mechanics and configuration timers clarified in Chunk 1.10 (2026-11-05). Distinguishes partial rebuild wait period (Nexus data plane, default 10m) from offline rebuild grace period (control plane agent, default 5-10m); documented published vs unpublished volume behavior; anti-affinity barrier prevents replacement on 3-node clusters.
+- **Research Status:** Rebuild mechanics and configuration timers audited in Chunk 1.11 (2026-11-05). Verified `--faulted-child-wait-period` (default 10m / 600s) on `mayastor-agent-core`; clarified that a standalone `--node-unreachable-timeout` flag does not exist in upstream Mayastor (node loss is governed by Kubernetes node eviction tolerations and NVMe `ctrl_loss_tmo`); documented published vs unpublished volume behavior; anti-affinity barrier prevents replacement on 3-node clusters.
 
 ### 12. Kubernetes Container Storage Interface (CSI)
 - **What Needs to be Researched:** CSI specification (`CreateVolume`, `NodePublishVolume`, `NodeStageVolume`), VolumeAttachment lifecycle, and dynamic provisioning.
@@ -110,8 +110,8 @@
 - **What Needs to be Researched:** POSIX filesystem concurrency vs. raw block multi-attach; Kubernetes `ReadWriteOnce` vs. `ReadWriteMany` enforcement.
 - **Why It Matters to Our Project:** Identifies the fundamental architectural challenge: Mayastor provides RWO block devices, while KubeVirt live migration requires RWX storage access.
 - **Official Documentation:** [Kubernetes Persistent Volumes - Access Modes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#access-modes)
-- **Important Implementation Questions:** How does Mayastor's native experimental RWX block volume support (introduced in v2.11 / OpenEBS 4.6) coordinate multi-attach without an in-band distributed lock manager, and how does QEMU hypervisor serialization guarantee write safety?
-- **Research Status:** Audited and formalized in Chunk 1.10 (2026-11-05). Detailed 6-scenario live-migration test suite (Clean migration, cancellation/retry, source crash, network partition, target eviction, and evidence-based concurrency audit via monotonic sequence writes and QMP events) documented in `docs/storage-architecture-analysis.md` and formalized in ADR-008 and ADR-010. Empirical live-migration testing pending Chunk 6.
+- **Important Implementation Questions:** How does Mayastor's native experimental RWX block volume support (bundled in OpenEBS v4.6.x / Mayastor v2.12.2) coordinate multi-attach without an in-band distributed lock manager, and how does QEMU hypervisor serialization guarantee write safety?
+- **Research Status:** Audited and formalized in Chunk 1.10 and completed in Chunk 1.11 (2026-11-05). Detailed 6-scenario live-migration test suite (Clean migration, cancellation/retry, source crash, network partition, target eviction, and evidence-based concurrency audit) documented in `docs/storage-architecture-analysis.md` and formalized in ADR-008 and ADR-010. Rigorous single-writer protocol specified with 512-byte fixed binary records, strictly monotonic sequence IDs, writer epochs, CRC32C checksums, QEMU QMP `STOP`/`RESUME` event correlation, and transparent NTP clock drift limitations. Empirical live-migration testing pending Chunk 6.
 
 ### 15. Shared Storage via NFS Gateway Integration
 - **What Needs to be Researched:** NFSv4 server export settings, synchronous locking (`sync`, `no_wdelay`), client mount options (`cache=none`, `hard`, `intr`), and CSI NFS drivers.
