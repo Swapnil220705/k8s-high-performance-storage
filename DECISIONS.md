@@ -221,26 +221,27 @@
 
 ## ADR-010: Supported Modern Software Stack Baseline
 
-- **Status:** PROPOSED (Evaluated in Chunk 1.8)
+- **Status:** PROPOSED / AUDITED (Chunk 1.9 Final Audit)
 - **Date:** 2026-11-05
 - **Context:**  
-  The project requires a currently supported, technically defensible software stack in late 2026. The intersection between Kubernetes supported lifecycle, KubeVirt compatibility, OpenEBS Mayastor release testing, and Linux kernel drivers must be established without relying on EOL software or unvalidated bleeding-edge releases.
+  The project requires a currently supported, technically defensible software stack in late 2026. The intersection between Kubernetes supported lifecycle, KubeVirt compatibility, OpenEBS Mayastor release testing, container runtimes, and Linux kernel drivers must be established without relying on EOL software or unvalidated bleeding-edge releases.
 - **Options Considered:**
-  1. *Bleeding-Edge (Kubernetes 1.36 / 1.37):* Latest upstream releases; high risk of storage operator CSI driver failure due to Mayastor qualification lag.
-  2. *EOL Releases (Kubernetes 1.28 / 1.29):* Deprecated and unmaintained upstream; rejected.
-  3. *Supported Modern Intersection (Primary: Kubernetes v1.35.x, Fallback: v1.34.x):*
+  1. *Bleeding-Edge (Kubernetes 1.36 / 1.37):* Latest upstream releases; high risk of storage operator CSI driver failure due to Mayastor qualification lag, and KubeVirt v1.8 officially tests only up to `<1.36`.
+  2. *EOL Releases (Kubernetes 1.28 / 1.29 / 1.34, containerd 1.7.x):* Deprecated and unmaintained upstream; containerd 1.7 reached EOL on September 30, 2026, and Kubernetes 1.34 reached upstream EOL on October 27, 2026. Both are rejected.
+  3. *Supported Modern Intersection (Audited Chunk 1.9 Baseline):*
      - Host OS: Ubuntu Server 24.04 LTS (Noble Numbat) with Linux Kernel 6.8 LTS.
-     - Kubernetes: v1.35.x (within active support through Feb 2027; fallback v1.34.x).
-     - Container Runtime: `containerd` v1.7.22 (LTS CRI v1).
-     - CNI: Calico v3.28+ (routed BGP).
-     - Storage Engine: OpenEBS v4.6.x (Mayastor v2.11+) supporting native RWX block volumes.
+     - Kubernetes: v1.35.x (Time-Limited Primary Candidate, active support through February 28, 2027; qualification gap documented for v1.36/v1.37).
+     - Container Runtime: `containerd` 2.3 LTS (supported through April 30, 2028; alternative containerd 2.4).
+     - CNI: Calico v3.33 (officially tested for Kubernetes v1.35–v1.37).
+     - Storage Engine: OpenEBS v4.6.x (Mayastor v2.11+) with SPDK user-space engine; mandatory 2 dedicated CPU cores for busy-polling; write log tracking for dirty extents with 10m default partial rebuild grace period; explicit degraded state recognition on 3-node cluster.
      - Virtualization Engine: KubeVirt v1.8.x + CDI v1.61.x.
+     - Resource Standards: Minimum 6 physical cores (2 SPDK + 2 OS/system + 2 VM) and 16 GB physical RAM ($\approx 14.3$ GiB usable); Preferred 8–16 physical cores and 32 GB physical RAM ($\approx 29.3$ GiB usable).
 - **Decision:**  
-  Adopt Option 3: Primary target Kubernetes v1.35.x (with fallback to v1.34.x if storage qualification issues emerge during deployment).
+  Adopt Option 3: Primary target Kubernetes v1.35.x with containerd 2.3 LTS and Calico v3.33.
 - **Reasoning:**  
-  Aligns with upstream Kubernetes active support, officially tested by KubeVirt v1.8 (supporting `>=1.33 <1.36`), supported by OpenEBS 4.6+, and benefits from Linux 6.8 kernel NVMe-oF and KVM optimizations.
+  Eliminates all EOL software components; aligns with upstream Kubernetes active support (until Feb 2027); officially qualified by KubeVirt v1.8 (`>=1.33 <1.36`); supported by OpenEBS 4.6+; benefits from Linux 6.8 kernel NVMe-oF and KVM optimizations.
 - **Consequences:**  
-  - *Positive:* Technically defensible in 2026; zero EOL software; access to native RWX block volume features.
-  - *Negative:* Mayastor native RWX block volume remains experimental upstream.
+  - *Positive:* 100% compliant with upstream support lifecycles in late 2026; zero EOL software; access to native RWX block volume features and containerd 2.x LTS stability.
+  - *Negative:* Mayastor native RWX block volume remains experimental upstream; requires careful execution of the 6-scenario live-migration test suite.
 - **Validation Evidence:**  
-  Documented in `docs/compatibility-matrix.md` and `docs/final-deployment-proposal.md`.
+  Documented in `docs/compatibility-matrix.md`, `docs/network-and-virtualization-requirements.md`, `docs/storage-architecture-analysis.md`, and `docs/final-deployment-proposal.md`.
