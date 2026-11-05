@@ -4,10 +4,10 @@
 **Project ID:** SWFW_5S_08  
 **Program:** Zoho SETU — College Student Project Program  
 **Active Branch:** `main`  
-**Current Phase:** Phase 1 — Infrastructure Discovery & Technical Feasibility  
-**Current Chunk:** Chunk 1.11 — Final Deployment Baseline and Evidence Closure  
-**Chunk 1.11 Status:** 🟢 COMPLETED (Ready for User Review & Approval)  
-**Overall Completion:** 5 / 14 Chunks Completed (Foundation, Feasibility, Lifecycle & Reconciliation Audits, Baseline & Evidence Closure)  
+**Current Phase:** Phase 2 — Target Infrastructure Preparation & Kubernetes Cluster Bootstrap  
+**Current Chunk:** Chunk 2.0 — Infrastructure Readiness & Access Planning  
+**Chunk 2.0 Status:** 🟢 COMPLETED (Readiness Assessment: NOT READY — Awaiting Lab Allocation & Permissions)  
+**Overall Completion:** 6 / 15 Milestones Completed (Foundation, Feasibility, Lifecycle & Reconciliation Audits, Baseline Closure, Infrastructure Readiness Planning)  
 
 ---
 
@@ -27,7 +27,9 @@
 | **1.9**| **Final Lifecycle, Compatibility & Resource Audit** | 🟢 **COMPLETED** | Chunk 1.9 | EOL Elimination (k8s 1.34/containerd 1.7), 2-Core SPDK Busy-Poll, GB/GiB Sizing, 20-Port Scopes |
 | **1.10**| **Final Compatibility & Resource Reconciliation** | 🟢 **COMPLETED** | Chunk 1.10 | containerd Recommendation Matrix Reconciled, Mayastor 2.12.2 E2E on K8s 1.35.6, Exact Binary Memory Math, Asymmetric Migration Budgets, Authoritative Ports |
 | **1.11**| **Final Deployment Baseline and Evidence Closure** | 🟢 **COMPLETED** | Chunk 1.11 | Candidate B Preferred Target, OpenEBS v4.6.x Chart Mapping Verified, MemTotal Memory Sizing & Headroom, Canonical 20-Port Matrix, Single-Writer Migration Protocol, Verified Rebuild Parameters |
-| **2** | Target Infrastructure Preparation & Kubernetes Cluster Bootstrap | ⚪ NOT STARTED | Chunk 2 | Pending User Authorization & Server Allocation |
+| **2.0**| **Infrastructure Readiness & Access Planning** | 🟢 **COMPLETED** | Chunk 2.0 | Evidence-Based Readiness Tracker, Refined College Questionnaire, Administrative Access Matrix, Fallback Hierarchy, Objective Assessment (NOT READY) |
+| **2.1**| Host Pre-flight Verification & Linux Environment Setup | ⚪ NOT STARTED | Chunk 2.1 | Awaiting College Hardware Allocation & Administrative Sudo Grant |
+| **2.2**| Kubernetes Cluster Bootstrap via kubeadm | ⚪ NOT STARTED | Chunk 2.2 | Awaiting Host Pre-flight Completion & Network Setup |
 | **3** | OpenEBS Mayastor Storage Engine Deployment | ⚪ NOT STARTED | Chunk 3 | Pending Authorization |
 | **4** | Storage Pools, Replication & Volume Provisioning | ⚪ NOT STARTED | Chunk 4 | Pending Authorization |
 | **5** | KubeVirt Virtualization Stack Integration | ⚪ NOT STARTED | Chunk 5 | Pending Authorization |
@@ -81,7 +83,15 @@
   - **Single-Writer Concurrency Verification Protocol:** Formulated rigorous verification protocol with 512-byte fixed binary record layout, unique writer IDs, writer epochs, atomic sequence counters, duplicate/stale/gap detection, CRC32C verification, QEMU QMP `STOP`/`RESUME` event correlation, and physical clock drift limits.
   - **Rebuild Configuration Verified:** Verified `--faulted-child-wait-period` (default 10m / 600s) on `mayastor-agent-core`; clarified that a standalone `--node-unreachable-timeout` flag does not exist in upstream Mayastor (governed by Kubernetes node eviction tolerations and NVMe `ctrl_loss_tmo`).
   - **Canonical 20-Port Matrix:** Built reconciled 20-port table (10 physical host firewall rules, 10 cluster-internal/loopback services); purged TCP 4420; confirmed Multus CNI requires 0 network ports.
-- [x] Synchronized ADR-010, `ARCHITECTURE.md`, `docs/final-deployment-proposal.md`, `README.md`, and `RESEARCH.md`.
+- [x] **Chunk 2.0 Infrastructure Readiness & Access Planning:**
+  - **Refined Infrastructure Questionnaire (`docs/college-infrastructure-questionnaire.md`):** Professional inquiry formulated for laboratory administrators, structured into node specs, dedicated raw disks, KVM virtualization, HugePages, static networking, and administrative access.
+  - **Infrastructure Readiness Tracker (`docs/infrastructure-readiness-tracker.md`):** Complete tracking matrix established across 17 technical items (HW, ACC, NET, INS) using strict governance statuses (`UNKNOWN`, `REQUESTED`, `CONFIRMED`, `UNAVAILABLE`, `BLOCKED`).
+  - **Hardware Allocation Ledger:** Set up candidate machine tracking for Node 0 and Workers 1–3, retaining planning standards (6-core min, 16 GB RAM baseline, 32 GB preferred, 2 dedicated SPDK cores, 2 GiB HugePages, dedicated raw SSD/NVMe).
+  - **Administrative Access Matrix:** Formalized requirements for root/sudo, SSH, HugePages, kernel modules (`nvme-tcp`), firewall rules, reboot permissions, and explicit raw disk wipe/format permissions.
+  - **Network Readiness Checklist:** Mapped Layer-2 subnet, static IP, DNS, NTP, and firewall communication paths.
+  - **Infrastructure Fallback Hierarchy:** Documented 4 fallback tiers prioritizing physical college servers and lab desktops over nested virtualization, with commercial cloud prohibited and development laptop excluded.
+  - **Readiness Verdict (NOT READY):** Established objective assessment criteria; formally declared environment **NOT READY** due to pending machine allocation, sudo grants, IP assignments, and disk dedications.
+- [x] Synchronized `docs/infrastructure-readiness-tracker.md`, `docs/college-infrastructure-questionnaire.md`, and `PROJECT_STATE.md`.
 
 ### 2.2 Verified Infrastructure Features
 - [x] **Local Hardware Capability:** Verified AMD Ryzen 5 7535HS (6C/12T), AMD-V enabled, 8 GB DDR5 RAM (~750 MB free), 1x 512 GB NVMe (~17 GB free on C:), WSL2 Ubuntu installed.
@@ -159,19 +169,25 @@
   - Commit 1 (`b361cc6`): `docs: establish candidate b as preferred baseline and verify openebs chart mapping` — Established Candidate B as preferred experimental qualification baseline, Candidate A as comparison baseline; verified published umbrella chart `openebs` v4.6.x (Mayastor subchart v2.12.2); excluded K8s 1.37.
   - Commit 2 (`ac03852`): `docs: update canonical port matrix and calculate memtotal headroom` — Recalculated memory headroom from usable `MemTotal` (14.40–14.70 GiB on 16 GB, 29.30–29.60 GiB on 32 GB); demonstrated loaded-destination Case 2 fatal deficit ($-0.60\text{ to }-5.20\text{ GiB}$); built canonical 20-port matrix.
   - Commit 3 (`00ca169`): `docs: specify migration single-writer protocol and rebuild configuration evidence` — Formulated single-writer protocol with 512-byte record layout, sequence numbers, writer IDs/epochs, CRC32C, QMP events, and clock drift bounds; verified `--faulted-child-wait-period` (10m default) and clarified node unreachable governance.
-  - Commit 4: `docs: finalize deployment proposal and synchronize project state for chunk 1.11` — Synchronized `docs/final-deployment-proposal.md`, `ARCHITECTURE.md`, `DECISIONS.md`, `README.md`, `RESEARCH.md`, and `PROJECT_STATE.md`.
+  - Commit 4 (`525563f`): `docs: finalize deployment proposal and synchronize project state for chunk 1.11` — Synchronized `docs/final-deployment-proposal.md`, `ARCHITECTURE.md`, `DECISIONS.md`, `README.md`, `RESEARCH.md`, and `PROJECT_STATE.md`.
+- **2026-11-05:** Implemented Chunk 2.0 Infrastructure Readiness & Access Planning:
+  - Commit 1 (`7349098`): `docs: refine college infrastructure questionnaire` — Enhanced inquiry document into a professional, concise allocation request covering node topology, secondary raw block devices, KVM hardware acceleration, HugePages, static networking, and administrative permissions.
+  - Commit 2 (`ace13f6`): `docs: create infrastructure readiness tracker and access planning` — Created authoritative readiness tracker (`docs/infrastructure-readiness-tracker.md`) across 17 technical items using strict governance statuses (`UNKNOWN`, `REQUESTED`, `CONFIRMED`, `UNAVAILABLE`, `BLOCKED`); defined hardware allocation ledger, administrative access matrix, network readiness, institutional operational constraints, fallback hierarchy, and objective readiness assessment (`NOT READY`).
+  - Commit 3: `docs: update project state and readiness tracker synchronization` — Synchronized `PROJECT_STATE.md` and repository status.
 
 ---
 
 ## 7. Next Authorized Action
 
-Chunk 1.11 is fully complete and validated. **STOP AND AWAIT USER APPROVAL.**  
-Next step upon explicit user authorization:
-- **Chunk 2 — Target Infrastructure Preparation & Kubernetes Cluster Bootstrap:**
-  - Submit `docs/college-infrastructure-questionnaire.md` to laboratory administration to secure 4 nodes meeting audited specs ($\ge$6 cores, 16 GB RAM min, 32 GB pref).
-  - Author automated Linux host pre-flight verification scripts (`scripts/setup/01-host-preflight.sh`) checking HugePages, `nvme-tcp`, containerd 2.3 LTS, and `/dev/kvm`.
-  - Author reproducible `kubeadm` cluster initialization manifests and bootstrap scripts.
-  - Submit `docs/college-infrastructure-questionnaire.md` to laboratory administration to secure 4 nodes meeting audited specs ($\ge$6 cores, 16 GB RAM min, 32 GB pref).
-  - Author automated Linux host pre-flight verification scripts (`scripts/setup/01-host-preflight.sh`) checking HugePages, `nvme-tcp`, containerd 2.3 LTS, and `/dev/kvm`.
-  - Author reproducible `kubeadm` cluster initialization manifests and bootstrap scripts.
-  - **Do not proceed to Chunk 2 until user review and authorization are given.**
+Chunk 2.0 is fully complete and validated. **STOP AND AWAIT USER APPROVAL.**  
+Current Readiness State: **`NOT READY`** (Awaiting formal laboratory machine allocation and administrative credentials).
+
+Next steps upon explicit user authorization and laboratory response:
+1. Deliver `docs/college-infrastructure-questionnaire.md` to Department Laboratory Administration.
+2. Upon return of completed questionnaire and credential issuance:
+   - Record assigned hostnames, CPU models, RAM sizes, and disk paths in `docs/infrastructure-readiness-tracker.md`.
+   - Update readiness status to `CONDITIONALLY READY` or `READY FOR HOST PREFLIGHT`.
+3. Proceed to **Chunk 2.1 — Host Pre-flight Verification & Linux Environment Setup**:
+   - Author non-destructive inspection scripts (`scripts/setup/01-host-preflight.sh`) to verify `/dev/kvm`, HugePages, and `nvme-tcp`.
+   - Author prerequisite configuration scripts (`scripts/setup/02-node-prerequisites.sh`).
+4. **DO NOT start host preflight scripts or cluster bootstrap until college hardware is allocated and user authorization is granted.**

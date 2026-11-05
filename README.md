@@ -4,7 +4,7 @@
 **Program:** Zoho SETU — College Student Project Program  
 **Category:** Cloud Infrastructure / Kubernetes / Virtualization / Distributed Storage / Systems Engineering  
 **Repository Branch:** `main`  
-**Status:** In Progress (Phase 1 — Infrastructure Discovery & Technical Feasibility Complete; Chunk 1.11 Final Baseline & Evidence Closure)  
+**Status:** In Progress (Phase 2 — Target Infrastructure Preparation; Chunk 2.0 Infrastructure Readiness & Access Planning Complete)  
 
 ---
 
@@ -20,7 +20,7 @@ Modern cloud-native environments increasingly converge containerized microservic
 This project investigates, designs, deploys, and benchmarks a high-performance cloud-native storage architecture centered on **OpenEBS Mayastor**, leveraging the **Storage Performance Development Kit (SPDK)** and **NVMe over Fabrics (NVMe-oF)** to service **KubeVirt** virtual machine workloads on a multi-node Kubernetes cluster.
 
 > [!IMPORTANT]
-> **Project Phase & Verification Status:** This project has completed **Phase 1 Infrastructure Discovery and Technical Feasibility (Chunks 0 through 1.11)**. All architectural designs, component topologies, and benchmark goals described herein represent **PROPOSED TARGET ARCHITECTURES** and are **NOT YET DEPLOYED OR EXPERIMENTALLY VERIFIED ON LIVE HARDWARE**. No infrastructure claims are made prior to concrete test execution and data collection.
+> **Project Phase & Verification Status:** This project has completed **Phase 1 Infrastructure Discovery (Chunks 0 through 1.11)** and **Chunk 2.0 Infrastructure Readiness & Access Planning**. All architectural designs, component topologies, and benchmark goals described herein represent **PROPOSED TARGET ARCHITECTURES** and are **NOT YET DEPLOYED OR EXPERIMENTALLY VERIFIED ON LIVE HARDWARE**. No infrastructure claims are made prior to concrete test execution and data collection.
 
 ---
 
