@@ -4,7 +4,7 @@
 **Program:** Zoho SETU — College Student Project Program  
 **Category:** Cloud Infrastructure / Kubernetes / Virtualization / Distributed Storage / Systems Engineering  
 **Repository Branch:** `main`  
-**Status:** In Progress (Chunk 0 — Project Foundation & Governance)  
+**Status:** In Progress (Phase 1 — Infrastructure Discovery & Technical Feasibility Complete; Chunk 1.10 Final Reconciliation)  
 
 ---
 
@@ -20,7 +20,7 @@ Modern cloud-native environments increasingly converge containerized microservic
 This project investigates, designs, deploys, and benchmarks a high-performance cloud-native storage architecture centered on **OpenEBS Mayastor**, leveraging the **Storage Performance Development Kit (SPDK)** and **NVMe over Fabrics (NVMe-oF)** to service **KubeVirt** virtual machine workloads on a multi-node Kubernetes cluster.
 
 > [!IMPORTANT]
-> **Project Phase & Verification Status:** This project is currently in the **Foundation & Governance (Chunk 0)** phase. All architectural designs, component topologies, and benchmark goals described herein represent **PROPOSED TARGET ARCHITECTURES** and are **NOT YET DEPLOYED OR EXPERIMENTALLY VERIFIED**. No infrastructure claims are made prior to concrete test execution and data collection.
+> **Project Phase & Verification Status:** This project has completed **Phase 1 Infrastructure Discovery and Technical Feasibility (Chunks 0 through 1.10)**. All architectural designs, component topologies, and benchmark goals described herein represent **PROPOSED TARGET ARCHITECTURES** and are **NOT YET DEPLOYED OR EXPERIMENTALLY VERIFIED ON LIVE HARDWARE**. No infrastructure claims are made prior to concrete test execution and data collection.
 
 ---
 
@@ -44,18 +44,18 @@ Enterprise workloads demanding virtualization within Kubernetes require storage 
 
 | Domain | Technology / Component | Planned Version / Spec | Role & Architectural Function |
 | :--- | :--- | :--- | :--- |
-| **Host Operating System** | Ubuntu Server 22.04 / 24.04 LTS | Linux 5.15 / 6.x kernel | Base OS across all bare-metal / virtual cluster nodes |
-| **Cluster Orchestration** | Kubernetes (`kubeadm`) | v1.28+ (TBD during validation) | Core container orchestration and resource scheduling |
-| **Container Runtime** | `containerd` | v1.7+ | OCI-compliant container runtime interfacing with Kubelet via CRI |
-| **Cluster Networking** | Calico / Flannel (CNI) | Latest stable | Pod-to-Pod and Node-to-Pod networking fabric |
-| **Storage Engine** | OpenEBS Mayastor | OpenEBS v4.6+ (Mayastor v2.11+) | SPDK-based high-performance distributed block storage engine |
-| **I/O Acceleration** | SPDK (User Space) | Integrated with Mayastor | Polled-mode NVMe driver, zero-copy user-space I/O pipeline |
+| **Host Operating System** | Ubuntu Server 24.04 LTS | Linux 6.8 LTS kernel | Base OS across all bare-metal / virtual cluster nodes |
+| **Cluster Orchestration** | Kubernetes (`kubeadm`) | v1.35.x (Candidate A) / v1.36.x (Candidate B) | Core container orchestration and resource scheduling |
+| **Container Runtime** | `containerd` | v2.3 LTS (or v2.2.x) | OCI-compliant container runtime interfacing with Kubelet via CRI |
+| **Cluster Networking** | Calico v3.33 (CNI) | Pure routed BGP mode | Pod-to-Pod and Node-to-Pod networking fabric without VXLAN overhead |
+| **Storage Engine** | OpenEBS Mayastor | OpenEBS v4.7.0 (Mayastor v2.12.2) | SPDK-based high-performance distributed block storage engine (Ports 8420 & 4421) |
+| **I/O Acceleration** | SPDK (User Space) | Integrated with Mayastor | Polled-mode NVMe driver (2 dedicated cores), zero-copy user-space I/O pipeline |
 | **Storage Protocol** | NVMe-oF (TCP) | NVMe over Fabrics | High-throughput, low-latency block transport across cluster nodes |
-| **Virtualization Layer** | KubeVirt | v1.8+ | Kubernetes CRD controller managing QEMU/KVM VM pods |
-| **Hypervisor / Emulator** | QEMU / KVM | Linux KVM module | Hardware-assisted virtualization within VM launcher pods |
-| **Shared Storage Gateway** | NFS Server / RWX Provisioner | NFSv4 | Evaluation mechanism for RWX live-migration shared storage |
+| **Virtualization Layer** | KubeVirt | v1.8+ / v1.9+ | Kubernetes CRD controller managing QEMU/KVM VM pods |
+| **Hypervisor / Emulator** | QEMU / KVM | Linux KVM module (`/dev/kvm`) | Hardware-assisted virtualization within VM launcher pods |
+| **Shared Storage Gateway** | NFS Server / RWX Provisioner | `csi-driver-nfs` v4.9.0 | Comparative fallback mechanism for RWX live-migration shared storage |
 | **Benchmarking Suite** | Flexible I/O Tester (`fio`) | v3.30+ | Multi-pattern synthetic I/O workload generation & measurement |
-| **Metrics & Monitoring** | Prometheus & Grafana | Official Helm charts | Cluster, storage engine, and guest VM telemetry & visualization |
+| **Metrics & Monitoring** | Prometheus & Grafana | `kube-prometheus-stack` v62.x | Cluster, storage engine, and guest VM telemetry (Internal management network only) |
 
 ---
 

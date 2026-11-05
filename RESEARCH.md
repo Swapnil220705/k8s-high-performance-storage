@@ -30,11 +30,11 @@
 - **Research Status:** Theoretical review complete; pre-flight scripting pending Chunk 1.
 
 ### 3. Container Runtime (`containerd`)
-- **What Needs to be Researched:** Container Runtime Interface (CRI) plugins, `systemd` cgroup management, image layer caching, and storage drivers in `containerd` 2.3 LTS (and 2.4).
-- **Why It Matters to Our Project:** KubeVirt launches `virt-launcher` pods through containerd; improper cgroup driver alignment (`systemd` vs `cgroupfs`) causes kubelet node instability. Upstream containerd 1.7 reached EOL on September 30, 2026.
+- **What Needs to be Researched:** Container Runtime Interface (CRI) plugins, `systemd` cgroup management, image layer caching, and storage drivers in `containerd` 2.3 LTS and 2.2.
+- **Why It Matters to Our Project:** KubeVirt launches `virt-launcher` pods through containerd; improper cgroup driver alignment (`systemd` vs `cgroupfs`) causes kubelet node instability. Upstream containerd 1.7 reached EOL on September 30, 2026. Official containerd matrix recommends containerd 2.2 for K8s 1.35 and 2.3 for K8s 1.36+.
 - **Official Documentation:** [containerd Documentation](https://containerd.io/docs/)
-- **Important Implementation Questions:** Does `containerd` 2.3 LTS require custom stream server settings or runtime handler registrations to support KubeVirt's virtualization containers under CRI v1?
-- **Research Status:** Theoretical review complete; containerd 2.3 LTS established as baseline in Chunk 1.9 (2026-11-05).
+- **Important Implementation Questions:** Does `containerd` 2.3 LTS operate seamlessly with Kubernetes 1.35 under CRI v1 despite being outside the 1.35 recommendation matrix, and how does containerd 2.2's November 6, 2026 EOL affect deployment?
+- **Research Status:** Reconciled in Chunk 1.10 (2026-11-05). Evaluated Candidate A (K8s 1.35 + containerd 2.2/2.3) vs. Candidate B (K8s 1.36 + containerd 2.3 LTS).
 
 ### 4. Kubernetes Networking & CNI (Calico)
 - **What Needs to be Researched:** Pod CIDR allocation, routed BGP networking vs encapsulation, MTU overhead, and Calico v3.33 compatibility.
@@ -62,7 +62,7 @@
 - **Why It Matters to Our Project:** Mayastor is the foundational storage engine responsible for synchronous block replication and NVMe-oF transport.
 - **Official Documentation:** [OpenEBS Documentation](https://openebs.io/docs/) | [Mayastor GitHub Repository](https://github.com/openebs/mayastor)
 - **Important Implementation Questions:** How does Mayastor handle metadata consensus and dynamic Nexus migration if a storage node hosting the active Nexus fails, and how is this decoupled from Kubernetes etcd Raft quorum?
-- **Research Status:** Decoupling from `etcd` Raft quorum confirmed in Chunk 1.8. Native RWX block volume support investigated in OpenEBS 4.6.x (Mayastor v2.11+). 6-scenario live migration test suite formulated in Chunk 1.9 (2026-11-05).
+- **Research Status:** Mayastor v2.12.2 / OpenEBS v4.7.0 evaluated in Chunk 1.10. E2E verification confirmed on Kubernetes 1.35.6. Decoupling from etcd Raft quorum verified. 6-scenario live migration test suite formulated.
 
 ### 8. Storage Performance Development Kit (SPDK)
 - **What Needs to be Researched:** User-space device drivers, Polled Mode Drivers (PMD), lockless ring buffers, hugepage memory mapping, and zero-copy I/O queues.
@@ -73,10 +73,10 @@
 
 ### 9. NVMe over Fabrics (NVMe-oF / TCP)
 - **What Needs to be Researched:** NVMe-oF protocol specifications, transport bindings (RDMA vs. TCP), submission/completion queue mechanics, and the Linux kernel `nvme-tcp` initiator module.
-- **Why It Matters to Our Project:** NVMe-oF over TCP serves as the wire protocol carrying block commands between Mayastor Nexus and worker node replicas.
+- **Why It Matters to Our Project:** NVMe-oF over TCP serves as the wire protocol carrying block commands between Mayastor Nexus and worker node replicas on TCP 8420 and 4421.
 - **Official Documentation:** [NVM Express Standards](https://nvmexpress.org/specifications/)
 - **Important Implementation Questions:** What kernel parameters (`nvme_core.multipath`, TCP socket buffer sizes) must be tuned on worker nodes to prevent connection timeouts during sustained heavy writes?
-- **Research Status:** Protocol specifications and kernel initiator requirements verified in Chunk 1 (2026-11-04). Documented in docs/network-and-virtualization-requirements.md.
+- **Research Status:** Protocol specifications and kernel initiator requirements verified in Chunk 1. Authoritative ports (8420 primary, 4421 secondary) confirmed in Chunk 1.10.
 
 ### 10. DiskPools & Cloud-Native Storage Provisioning
 - **What Needs to be Researched:** Mayastor `DiskPool` CRD lifecycle, SPDK Logical Volume (`lvol`) allocation, pool exhaustion thresholds, and block device discovery.
@@ -90,7 +90,7 @@
 - **Why It Matters to Our Project:** Ensures zero data loss (RPO = 0) and high availability during node or disk failure events.
 - **Official Documentation:** [Mayastor Replicas & Volumes](https://openebs.io/docs/user-guides/mayastor/replicas)
 - **Important Implementation Questions:** What is the measured write latency penalty when switching from 2-way replication ($N=2$) to 3-way replication ($N=3$) under 4k random writes? How does Mayastor handle replica replacement when only 2 nodes remain in a 3-node cluster?
-- **Research Status:** Rebuild mechanics audited in Chunk 1.9 (2026-11-05). Replaced "dirty-block bitmap" with documented Nexus write log; established 10-minute default partial rebuild grace period (`--faulted-child-wait-period=10m`); documented anti-affinity barrier preventing replacement replica allocation on 3-node clusters. Empirical testing pending Chunk 4 and Chunk 9.
+- **Research Status:** Rebuild mechanics and configuration timers clarified in Chunk 1.10 (2026-11-05). Distinguishes partial rebuild wait period (Nexus data plane, default 10m) from offline rebuild grace period (control plane agent, default 5-10m); documented published vs unpublished volume behavior; anti-affinity barrier prevents replacement on 3-node clusters.
 
 ### 12. Kubernetes Container Storage Interface (CSI)
 - **What Needs to be Researched:** CSI specification (`CreateVolume`, `NodePublishVolume`, `NodeStageVolume`), VolumeAttachment lifecycle, and dynamic provisioning.
@@ -111,7 +111,7 @@
 - **Why It Matters to Our Project:** Identifies the fundamental architectural challenge: Mayastor provides RWO block devices, while KubeVirt live migration requires RWX storage access.
 - **Official Documentation:** [Kubernetes Persistent Volumes - Access Modes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#access-modes)
 - **Important Implementation Questions:** How does Mayastor's native experimental RWX block volume support (introduced in v2.11 / OpenEBS 4.6) coordinate multi-attach without an in-band distributed lock manager, and how does QEMU hypervisor serialization guarantee write safety?
-- **Research Status:** Audited and formalized in Chunk 1.9 (2026-11-05). Detailed 6-scenario live-migration test suite (Clean migration, cancellation/retry, source crash, network partition, target eviction, and exclusive write safety) documented in `docs/storage-architecture-analysis.md` and formalized in ADR-008 and ADR-010. Empirical live-migration testing pending Chunk 6.
+- **Research Status:** Audited and formalized in Chunk 1.10 (2026-11-05). Detailed 6-scenario live-migration test suite (Clean migration, cancellation/retry, source crash, network partition, target eviction, and evidence-based concurrency audit via monotonic sequence writes and QMP events) documented in `docs/storage-architecture-analysis.md` and formalized in ADR-008 and ADR-010. Empirical live-migration testing pending Chunk 6.
 
 ### 15. Shared Storage via NFS Gateway Integration
 - **What Needs to be Researched:** NFSv4 server export settings, synchronous locking (`sync`, `no_wdelay`), client mount options (`cache=none`, `hard`, `intr`), and CSI NFS drivers.
