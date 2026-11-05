@@ -1,139 +1,145 @@
-# Network Topology, Port Verification & Worker Resource Requirements
+# Network Topology, Port Audit & Worker Resource Engineering
 
 **Project Name:** Deploy High-Performance Storage for Kubernetes  
 **Project ID:** SWFW_5S_08  
-**Research Date:** 2026-11-05 (Reassessed & Corrected)  
-**Document Status:** TECHNICAL SPECIFICATION, PORT MATRIX & RESOURCE BUDGET  
+**Audit Date:** 2026-11-05 (Chunk 1.9 Final Lifecycle & Port Audit)  
+**Document Status:** AUDITED TECHNICAL SPECIFICATION & RESOURCE BUDGET  
 **Classification:** VERIFIED AGAINST UPSTREAM DOCUMENTATION  
 
 ---
 
-## 1. Target Network Architecture & Traffic Classifications
+## 1. Network Architecture & Traffic Separation
 
-The target cluster network must isolate or logically partition four distinct traffic classifications to prevent I/O starvation and latency jitter:
-1. **Cluster Management & Control Traffic:** Kubernetes API calls, `etcd` Raft consensus, Kubelet health probes, and operator reconcile loops.
-2. **Pod-to-Pod CNI Overlay / Routed Fabric:** General microservice and inter-pod traffic managed by Calico.
-3. **Storage Data Fabric (NVMe-oF / TCP):** High-throughput, sub-millisecond block transport carrying NVMe command and completion capsules between the Mayastor Nexus and distributed `DiskPool` replicas.
-4. **Live-Migration Memory Streaming:** High-bandwidth TCP socket stream transferring dirty RAM pages between source and destination `virt-handler` hypervisor daemons.
+To maintain sub-millisecond storage latency and prevent I/O starvation during virtual machine memory streaming, cluster networking is partitioned into four distinct logical traffic planes:
 
 ```mermaid
 flowchart TD
-    subgraph ControlPlane["Control Plane Network Plane"]
+    subgraph ManagementPlane["1. Control & Management Plane"]
+        direction TB
         APIServer["kube-apiserver (:6443)"]
-        Etcd["etcd cluster (:2379-2380)"]
+        Etcd["etcd Raft (:2379, :2380)"]
+        Kubelet["kubelet API (:10250)"]
     end
 
-    subgraph DataPlaneMesh["Worker Node Data & Storage Mesh"]
-        subgraph Node1["Worker Node 1"]
-            Kubelet1["Kubelet (:10250)"]
-            VH1["virt-handler<br/>(Migration: :49152-49215)"]
-            MS1["Mayastor io-engine<br/>(NVMe-oF Target: :8420, gRPC: :10124)"]
-        end
-
-        subgraph Node2["Worker Node 2"]
-            Kubelet2["Kubelet (:10250)"]
-            VH2["virt-handler<br/>(Migration: :49152-49215)"]
-            MS2["Mayastor io-engine<br/>(NVMe-oF Target: :8420, gRPC: :10124)"]
-        end
-
-        subgraph Node3["Worker Node 3"]
-            Kubelet3["Kubelet (:10250)"]
-            MS3["Mayastor io-engine<br/>(NVMe-oF Target: :8420, gRPC: :10124)"]
-        end
+    subgraph CNIOverlay["2. Pod Interconnect (CNI Fabric)"]
+        direction TB
+        CalicoBGP["Calico Routed BGP (:179)<br/>Native L3 without VXLAN penalty"]
     end
 
-    APIServer <==>|Node Management| Kubelet1 & Kubelet2 & Kubelet3
-    VH1 <==>|Live Migration RAM Stream (:49152-49215)| VH2
-    MS1 <===>|Synchronous NVMe-oF Replication (:8420)| MS2
-    MS1 <===>|Synchronous NVMe-oF Replication (:8420)| MS3
+    subgraph StorageFabric["3. Storage Data Plane (NVMe-oF / TCP)"]
+        direction TB
+        MS_Target["Mayastor NVMf Target (:8420)<br/>High-throughput NVMe command capsules"]
+        MS_gRPC["Mayastor gRPC Controller (:10124)"]
+    end
+
+    subgraph MigrationFabric["4. Virtualization & Migration Plane"]
+        direction TB
+        KVM_Stream["QEMU Migration Stream (:49152-49215)<br/>Pre-copy RAM page transfer"]
+        KVM_API["KubeVirt Webhooks (:8443, :8444)"]
+    end
+
+    ManagementPlane -.->|Orchestration| StorageFabric
+    ManagementPlane -.->|Scheduling| MigrationFabric
+    CNIOverlay === StorageFabric
+    CNIOverlay === MigrationFabric
 ```
 
 ---
 
-## 2. Rigorously Validated Port & Protocol Matrix
+## 2. Granular Network Port Audit & Protocol Matrix
 
-Every port has been verified against official upstream documentation, with strict segregation between control planes and data fabrics:
+Every port below has been individually audited against official component documentation. Traffic categories, connection boundaries, and optional designations are explicitly recorded:
 
-| Component / Subsystem | Port / Range | Protocol | Traffic Category | Source | Destination | Official Architectural Purpose | Documentation Source |
+| Port / Range | Protocol | Component | Traffic Scope | Connection Boundary | Operational Purpose | Mandatory or Optional | Official Documentation Source |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Kubernetes API** | `6443` | TCP | Control Plane | Workers, Admins, Controllers | Control Plane | Core Kubernetes API Server entry point | [K8s Ports Reference](https://kubernetes.io/docs/reference/networking/ports-and-protocols/) |
-| **etcd Database** | `2379` | TCP | Control Plane | kube-apiserver | Control Plane | etcd client API queries | [K8s Ports Reference](https://kubernetes.io/docs/reference/networking/ports-and-protocols/) |
-| **etcd Peer** | `2380` | TCP | Control Plane | etcd peers | Control Plane | etcd Raft peer consensus | [K8s Ports Reference](https://kubernetes.io/docs/reference/networking/ports-and-protocols/) |
-| **Kubelet API** | `10250` | TCP | Control Plane | Control Plane, Metrics Server | All Nodes | Pod lifecycle, stats, logs, exec streams | [K8s Ports Reference](https://kubernetes.io/docs/reference/networking/ports-and-protocols/) |
-| **Controller Manager**| `10257` | TCP | Control Plane | Localhost / Self | Control Plane | kube-controller-manager health | [K8s Ports Reference](https://kubernetes.io/docs/reference/networking/ports-and-protocols/) |
-| **Scheduler** | `10259` | TCP | Control Plane | Localhost / Self | Control Plane | kube-scheduler health | [K8s Ports Reference](https://kubernetes.io/docs/reference/networking/ports-and-protocols/) |
-| **Calico BGP** | `179` | TCP | CNI Fabric | Worker Nodes | Worker Nodes | Calico native routed pod mesh (BGP peer) | [Calico Network Requirements](https://docs.tigera.io/calico/latest/getting-started/kubernetes/requirements) |
-| **Calico VXLAN** | `4789` | UDP | CNI Fabric | Worker Nodes | Worker Nodes | Fallback overlay encapsulation | [Calico Network Requirements](https://docs.tigera.io/calico/latest/getting-started/kubernetes/requirements) |
-| **Calico Typha** | `5473` | TCP | CNI Fabric | Calico Nodes | Calico Typha | Datastore proxy in larger clusters | [Calico Network Requirements](https://docs.tigera.io/calico/latest/getting-started/kubernetes/requirements) |
-| **Mayastor NVMe-oF**| `8420` | TCP | Storage Data | Worker Initiators | Worker Nexus / Replicas | Primary NVMf target (NVMe over TCP data transport) | [Mayastor Prerequisites](https://openebs.io/docs/user-guides/mayastor/prerequisites) |
-| **Mayastor NVMf (Alt)**| `4421` | TCP | Storage Data | Worker Initiators | Worker Nexus / Replicas | Secondary/alternative NVMf target data transport | [Mayastor Prerequisites](https://openebs.io/docs/user-guides/mayastor/prerequisites) |
-| **Mayastor gRPC** | `10124` | TCP | Storage Control| Mayastor Core Agent | Worker `io-engine` | Internal SPDK daemon pool management | [Mayastor Architecture](https://openebs.io/docs/user-guides/mayastor/architecture) |
-| **Mayastor REST API**| `8080` / `8081`| TCP | Storage Control| Admin / CLI / CSI | Core Agent Pods | Mayastor REST API and CSI controller | [Mayastor Architecture](https://openebs.io/docs/user-guides/mayastor/architecture) |
-| **Mayastor Metrics** | `9502` | TCP | Observability | Prometheus Server | Worker `io-engine` | Storage engine Prometheus metrics exporter | [Mayastor Monitoring](https://openebs.io/docs/user-guides/mayastor/monitoring) |
-| **KubeVirt API** | `8443` | TCP | Virt Control | kube-apiserver | `virt-api` Pods | Aggregated API server webhook & console router | [KubeVirt Install Guide](https://kubevirt.io/user-guide/operations/installation/) |
-| **KubeVirt Operator** | `8444` | TCP | Virt Control | kube-apiserver | `virt-operator` Pods | Operator metrics and webhook admission | [KubeVirt Install Guide](https://kubevirt.io/user-guide/operations/installation/) |
-| **KubeVirt Migration**| `49152–49215`| TCP | Virt Data | Source `virt-handler` | Target `virt-handler` | QEMU pre-copy live migration socket stream | [KubeVirt Live Migration](https://kubevirt.io/user-guide/compute/live_migration/) |
-| **KubeVirt Metrics** | `8186` | TCP | Observability | Prometheus Server | `virt-handler` Pods | Hypervisor and VM runtime metrics | [KubeVirt Monitoring](https://kubevirt.io/user-guide/operations/monitoring/) |
-| **NFS Gateway** | `2049` | TCP | Shared Storage | KubeVirt VMs, Workers | NFS Server Pod | Shared filesystem mount for RWX fallback VMs | [Linux NFS Documentation](https://linux-nfs.org/wiki/index.php/Main_Page) |
-| **RPCbind (NFS)** | `111` | TCP/UDP | Shared Storage | KubeVirt VMs, Workers | NFS Server Pod | RPC port mapper for NFS client mounts | [Linux NFS Documentation](https://linux-nfs.org/wiki/index.php/Main_Page) |
+| **`6443`** | TCP | Kubernetes API | Control Plane | Client-to-Node / Node-to-CP | Core Kubernetes API Server ingress | **Mandatory** | [Kubernetes Ports](https://kubernetes.io/docs/reference/networking/ports-and-protocols/) |
+| **`2379`** | TCP | etcd Client | Control Plane | Node-to-CP / Pod-to-CP | etcd client database queries | **Mandatory** (CP) | [Kubernetes Ports](https://kubernetes.io/docs/reference/networking/ports-and-protocols/) |
+| **`2380`** | TCP | etcd Peer | Control Plane | Node-to-Node (CP only) | etcd Raft peer consensus | **Mandatory** (Multi-CP) / Optional (Single-node CP) | [Kubernetes Ports](https://kubernetes.io/docs/reference/networking/ports-and-protocols/) |
+| **`10250`** | TCP | Kubelet | Control Plane | Node-to-Node / CP-to-Node | Kubelet node runtime API, logs, exec | **Mandatory** | [Kubernetes Ports](https://kubernetes.io/docs/reference/networking/ports-and-protocols/) |
+| **`10257`** | TCP | Controller-Mgr | Control Plane | Localhost / Self | kube-controller-manager health | **Mandatory** (Localhost) | [Kubernetes Ports](https://kubernetes.io/docs/reference/networking/ports-and-protocols/) |
+| **`10259`** | TCP | Scheduler | Control Plane | Localhost / Self | kube-scheduler health | **Mandatory** (Localhost) | [Kubernetes Ports](https://kubernetes.io/docs/reference/networking/ports-and-protocols/) |
+| **`179`** | TCP | Calico BGP | CNI Network | Node-to-Node (Mesh) | Calico native routed BGP peering mesh | **Mandatory** (for BGP mode) | [Calico Network Requirements](https://docs.tigera.io/calico/latest/getting-started/kubernetes/requirements) |
+| **`4789`** | UDP | Calico VXLAN | CNI Network | Node-to-Node | VXLAN overlay encapsulation | **Optional** (Disabled when BGP is used) | [Calico Network Requirements](https://docs.tigera.io/calico/latest/getting-started/kubernetes/requirements) |
+| **`5473`** | TCP | Calico Typha | CNI Network | Node-to-Pod | Calico datastore proxy | **Optional** (Only used in clusters $>$50 nodes) | [Calico Network Requirements](https://docs.tigera.io/calico/latest/getting-started/kubernetes/requirements) |
+| **`8420`** | TCP | Mayastor NVMf | Storage Data | Node-to-Node / Pod-to-Node | Primary NVMf target (NVMe over TCP data path) | **Mandatory** | [Mayastor Prerequisites](https://openebs.io/docs/user-guides/mayastor/prerequisites) |
+| **`4421`** | TCP | Mayastor NVMf | Storage Data | Node-to-Node | Secondary NVMf target port | **Optional** (Legacy/alternate data port) | [Mayastor Prerequisites](https://openebs.io/docs/user-guides/mayastor/prerequisites) |
+| **`10124`** | TCP | Mayastor gRPC | Storage Control| Pod-to-Pod / Node-to-Pod | `io-engine` daemonset management RPCs | **Mandatory** | [Mayastor Architecture](https://openebs.io/docs/user-guides/mayastor/architecture) |
+| **`8080` / `8081`** | TCP | Mayastor REST | Storage Control| Client-to-Pod / Pod-to-Pod | Core Agent REST API and CSI Controller | **Mandatory** | [Mayastor Architecture](https://openebs.io/docs/user-guides/mayastor/architecture) |
+| **`9502`** | TCP | Mayastor Stats| Monitoring | Pod-to-Pod | SPDK engine Prometheus metrics exporter | **Optional** (Observability stack) | [Mayastor Monitoring](https://openebs.io/docs/user-guides/mayastor/monitoring) |
+| **`8443`** | TCP | KubeVirt API | Virt Control | Node-to-Pod / CP-to-Pod | `virt-api` webhook validator and subresource console | **Mandatory** | [KubeVirt Operations](https://kubevirt.io/user-guide/operations/installation/) |
+| **`8444`** | TCP | KubeVirt Oper | Virt Control | Node-to-Pod / CP-to-Pod | `virt-operator` controller webhooks | **Mandatory** | [KubeVirt Operations](https://kubevirt.io/user-guide/operations/installation/) |
+| **`49152–49215`**| TCP | KubeVirt Migr | Virt Data | Node-to-Node | Libvirt/QEMU live-migration memory socket stream | **Mandatory** (for Live Migration) | [KubeVirt Live Migration](https://kubevirt.io/user-guide/compute/live_migration/) |
+| **`8186`** | TCP | KubeVirt Mon | Monitoring | Pod-to-Pod | `virt-handler` Prometheus metrics exporter | **Optional** (Observability stack) | [KubeVirt Monitoring](https://kubevirt.io/user-guide/operations/monitoring/) |
+| **`2049`** | TCP | NFS Server | Shared Storage| Client-to-Pod / Pod-to-Pod | NFSv4 filesystem share (Live migration fallback) | **Optional** (Fallback Tier only) | [Linux NFS Documentation](https://linux-nfs.org/wiki/index.php/Main_Page) |
+| **`111`** | TCP/UDP | RPCbind (NFS) | Shared Storage| Client-to-Pod | RPC portmapper for NFS mounts | **Optional** (Only needed if NFSv3 compatibility required) | [Linux NFS Documentation](https://linux-nfs.org/wiki/index.php/Main_Page) |
 
-### Multus CNI Network Port Clarification
-- **Important Architectural Finding:** Multus CNI does **not** listen on any TCP or UDP network port.
-- Multus is a meta-plugin that executes as an in-process binary invoked directly by `containerd` via the standard Linux CNI domain socket (`/run/containerd/containerd.sock` and `/etc/cni/net.d/`). Secondary interfaces attached by Multus (e.g., bridge, macvlan, or host-device) operate directly at Layer 2 or Layer 3 according to their respective network definitions.
-
----
-
-## 3. Virtualization Feasibility & Hypervisor Primitives
-
-1. **Hardware Virtualization Flag:** Processors on worker nodes must expose hardware virtualization extensions:
-   - Intel: `VT-x` (`vmx` flag in `/proc/cpuinfo`).
-   - AMD: `AMD-V` (`svm` flag in `/proc/cpuinfo`).
-2. **KVM Character Device (`/dev/kvm`):** Must be accessible with read/write permissions for container virtualization (`chmod 666 /dev/kvm`).
-3. **Software Emulation (TCG) Unacceptability:** If `/dev/kvm` is missing, KubeVirt can fall back to QEMU Tiny Code Generator (TCG) emulation (`developerConfiguration: useEmulation: true`). Under TCG, CPU instruction translation reduces throughput by **10x to 50x**, rendering synthetic storage benchmarks invalid. Hardware KVM pass-through is therefore a mandatory gating requirement.
+### Multus CNI Socket Architecture
+- **In-Process Invocation:** Multus CNI does **not** listen on any TCP or UDP network port.
+- It operates as a local CNI meta-binary called by `containerd` via local UNIX domain sockets (`/run/containerd/containerd.sock`) and CNI plugin interfaces (`/opt/cni/bin/`). Secondary interfaces provisioned by Multus (e.g., macvlan or bridge) operate directly on physical/virtual network adapters at Layer 2.
 
 ---
 
-## 4. Worker Node Resource Dimensioning & Capacity Planning
+## 3. Worker Node CPU Engineering & Busy-Poll Sizing
 
-To prevent Out-Of-Memory (OOM) evictions and CPU starvation on storage nodes, worker node memory and CPU allocations were rigorously dimensioned:
+### 3.1 SPDK Polling Thread Behavior (Busy-Polling)
+Mayastor’s `io-engine` uses the Storage Performance Development Kit (SPDK), which operates via **Polled Mode Drivers (PMD)**:
+1. **Core Dedication:** SPDK pins designated CPU cores to infinite polling loops checking NVMe completion queues.
+2. **100% Saturation by Design:** The allocated SPDK CPU cores register **100% CPU utilization in `top`/`htop` continuously**, even when zero I/O operations are occurring. This is not a malfunction; it is the deliberate design mechanism that eliminates interrupt latency.
+3. **Mandatory Two-Core Reservation:** Official Mayastor documentation mandates **reserving 2 CPU cores exclusively for each `io-engine` pod**.
 
-### 4.1 Granular Worker Node Memory Budget Breakdown
+### 3.2 Worker Node CPU Allocation Budget
 
-| Subsystem Component | Memory Required per Worker Node | Architectural Sizing Justification |
-| :--- | :--- | :--- |
-| **Linux Host OS & Kernel** | **1.5 – 2.0 GiB** | Ubuntu Server 24.04 kernel structures, page tables, systemd, SSH, and buffer caches. |
-| **Kubernetes Node Daemons** | **1.5 – 2.0 GiB** | `kubelet` (~500 MB), `containerd` runtime (~800 MB), Calico CNI agent (`calico-node` ~300 MB), `kube-proxy` (~100 MB). |
-| **Pre-Allocated HugePages (SPDK)**| **2.0 GiB (Mandatory Lockout)** | **1024 pages of 2 MiB HugePages** pre-allocated for SPDK memory pools. *Crucial:* Linux removes HugePages entirely from available OS physical memory. Standard pods cannot allocate this memory. |
-| **Mayastor `io-engine` Heap** | **1.0 – 1.5 GiB** | User-space process heap, gRPC buffers, NVMe-oF queue metadata, and SPDK thread-local memory. |
-| **KubeVirt Hypervisor Daemons** | **0.8 – 1.0 GiB** | `virt-handler` DaemonSet (~400 MB) plus QEMU `virt-launcher` container cgroup overhead (~256–512 MB per VM instance). |
-| **Monitoring & Logging Agents** | **0.5 GiB** | `node-exporter` (~150 MB), Mayastor stats exporter (~150 MB), Promtail/Fluentd (~200 MB). |
-| **NFS Gateway Pod (If Co-located)**| **0.5 – 1.0 GiB** | NFS Ganesha / kernel-server pod plus XFS/ext4 directory metadata caches (applicable on the worker hosting the gateway). |
-| **Subtotal (Idle Infrastructure Node):**| **~8.5 GiB RAM** | **Absolute baseline required just to run the host, storage engine, and virtualization daemons without any guest VM workloads.** |
-
-### 4.2 Workload Allocations & Live-Migration Sizing Impact
-
-When active guest virtual machines and live migrations are introduced:
-1. **Single 4 GB Guest Virtual Machine:**
-   - 4.0 GiB guest RAM + 0.5 GiB QEMU overhead = **4.5 GiB**.
-   - Total Node Load: $8.5 + 4.5 =$ **13.0 GiB RAM**.
-2. **Transient Live-Migration Handover Impact:**
-   - During live migration, the **Destination Worker Node** must allocate the full memory footprint of the incoming VM *while the source VM is still alive and running on the source node*.
-   - Destination Node Memory Required: $8.5 \text{ GiB (Base)} + 4.5 \text{ GiB (Incoming VM)} =$ **13.0 GiB RAM**.
-3. **Single 8 GB Guest Virtual Machine (or Two 4 GB VMs):**
-   - 8.0 GiB guest RAM + 1.0 GiB QEMU overhead = **9.0 GiB**.
-   - Total Node Load: $8.5 + 9.0 =$ **17.5 GiB RAM**.
+| Subsystem Component | Minimum Cores Required | Preferred Cores Required | Operational Function & CPU Behavior |
+| :--- | :--- | :--- | :--- |
+| **Mayastor SPDK `io-engine`** | **2 Dedicated Cores** | **2 Dedicated Cores** | Locked in user-space PMD busy-poll loops (100% core utilization). |
+| **Linux Host OS & Kernel** | **1 Core** | **2 Cores** | Systemd, kernel interrupts, TCP/IP stack processing, SSH, page cache sync. |
+| **Kubernetes Node Daemons** | **1 Core** | **2 Cores** | `kubelet`, `containerd`, Calico BGP agent (`calico-node`), `kube-proxy`. |
+| **KubeVirt Hypervisor Daemons**| **Shared with System** | **1 Core** | `virt-handler` process and libvirt event loops. |
+| **Guest Virtual Machine vCPUs**| **2 vCPUs** | **4 – 8 vCPUs** | Active execution of guest OS, benchmarking scripts (`fio`), and database threads. |
+| **Total Worker CPU Budget:** | **6 Physical Cores (Minimum)** | **8 – 16 Physical Cores (Preferred)** | **A 4-core physical CPU is severely constrained: dedicating 2 cores to SPDK leaves only 2 cores shared between OS, K8s, and the VM.** |
 
 ---
 
-### 4.3 Sizing Targets & Planning Guidance
+## 4. Worker Node Memory Engineering: GB vs. GiB Rigorous Sizing
 
-- **Minimum Planning Target: 16 GB RAM per Worker Node**
-  - *Viability:* **MINIMUM FUNCTIONAL BASELINE**.
-  - *Capacity:* Supports the idle infrastructure stack (~8.5 GiB) plus **one 4 GB guest virtual machine** (13.0 GiB total). Leaves ~3.0 GiB headroom for live migration buffer and burstable caches.
-  - *Constraint:* Cannot run two concurrent VMs on the same worker node without risking memory pressure or Kubelet eviction.
-- **Preferred Target: 32 GB RAM per Worker Node**
-  - *Viability:* **RECOMMENDED BENCHMARK BASELINE**.
-  - *Capacity:* Comfortably supports 8 GB workload VMs, concurrent multi-VM test matrices, live-migration transient dual-allocations, the NFS gateway, and high-throughput FIO I/O ring buffers without any memory pressure.
-- **CPU Allocation Targets:**
-  - *Minimum:* **4 Physical CPU Cores** (1 core dedicated to SPDK polling, 1 core for OS/Kubernetes, 2 cores for guest vCPUs).
-  - *Preferred:* **8 Physical CPU Cores** (2 cores dedicated to SPDK polling, 2 cores for OS/Kubernetes, 4 cores for guest vCPUs).
+### 4.1 Unit Definitions & Physical Memory Reality
+To prevent memory starvation, engineering calculations must distinguish decimal from binary units:
+- **Gigabyte (GB):** $10^9 = 1,000,000,000$ bytes (standard commercial RAM module rating).
+- **Gibibyte (GiB):** $2^{30} = 1,073,741,824$ bytes (standard Linux kernel and Kubernetes memory unit).
+- **The "16 GB" Module Deficit:** A physical 16 GB DDR4/DDR5 memory stick provides $16,000,000,000 \text{ bytes} \approx \mathbf{14.90\text{ GiB}}$.
+  - Motherboard UEFI firmware, ACPI tables, and hardware device reservations typically consume $0.4 - 0.7\text{ GiB}$.
+  - **Usable Host Physical Memory on a "16 GB" node is only $\approx \mathbf{14.20 - 14.50\text{ GiB}}$!**
+- **The "32 GB" Module Reality:** A physical 32 GB RAM module provides $32 \times 10^9 \text{ bytes} \approx \mathbf{29.80\text{ GiB}}$ ($\approx \mathbf{29.20\text{ GiB}}$ usable).
+
+---
+
+### 4.2 Comprehensive Worker Memory Allocation Table
+
+| Memory Category | Minimum Constrained Test Config (16 GB Physical RAM) | Preferred Benchmark Config (32 GB Physical RAM) | Accounting Category & Allocation Mechanism |
+| :--- | :--- | :--- | :--- |
+| **Physical RAM Installed** | **16 GB ($16 \times 10^9$ bytes)** | **32 GB ($32 \times 10^9$ bytes)** | Commercial hardware rating. |
+| **Usable Host Memory** | **$\approx$ 14.30 GiB** | **$\approx$ 29.30 GiB** | Total memory recognized by Linux kernel (`MemTotal`). |
+| **SPDK HugePages (Mandatory)**| **2.00 GiB (2048 MiB)** | **2.00 GiB (2048 MiB)** | **1024 pages of 2 MiB HugePages pre-allocated at boot.** Subtracted permanently from kernel general pool; unusable by ordinary pods. |
+| **Mayastor `io-engine` Heap** | **1.00 GiB (1024 MiB)** | **1.50 GiB** | User-space process heap, gRPC buffers, NVMe-oF queue metadata. |
+| **Host OS & Kernel Base** | **1.50 GiB** | **2.00 GiB** | Linux kernel slab, page tables, systemd, SSH, buffer caches. |
+| **Kubernetes Node Daemons** | **1.50 GiB** | **2.00 GiB** | `kubelet`, `containerd`, Calico CNI (`calico-node`), `kube-proxy`. |
+| **KubeVirt `virt-handler`** | **0.50 GiB** | **0.80 GiB** | Hypervisor daemonset and libvirtd event monitors. |
+| **Monitoring Daemons (Optional)**| **0.30 GiB** | **0.60 GiB** | `node-exporter` and Mayastor metrics exporters. |
+| **Subtotal (Base Infrastructure)**| **6.80 GiB Host RAM + 2.00 GiB HugePages = 8.80 GiB** | **8.90 GiB Host RAM + 2.00 GiB HugePages = 10.90 GiB** | **Baseline memory consumed before launching any virtual machines.** |
+| **Guest VM RAM Allocation** | **4.00 GiB (1x Small VM)** | **8.00 – 12.00 GiB (Multi-VM / Large VM)** | Dedicated guest physical memory assigned to the VM. |
+| **QEMU Process Overhead** | **0.60 GiB (per VM)** | **1.20 GiB (total for VMs)** | Virtio ring buffers, MMIO device emulation, vCPU stacks, launcher wrapper. |
+| **Live Migration Handover Buffer**| **1.00 GiB (Marginal)** | **4.50 GiB (Transient Dual Allocation)** | Transient memory footprint on target node during incoming RAM pre-copy. |
+| **Total Memory Consumed** | **$\approx$ 14.40 GiB (Near 100% Capacity)** | **$\approx$ 24.60 – 26.60 GiB (Comfortable)** | Total memory committed. |
+| **Safety Headroom / Page Cache**| **$\approx$ 0.00 – 0.50 GiB (HIGH RISK)** | **$\approx$ 2.70 – 4.70 GiB (HEALTHY)** | Uncommitted RAM preventing Kubelet OOM eviction. |
+
+---
+
+### 4.3 Sizing Verdicts & Architectural Conclusions
+
+1. **16 GB Physical RAM Node:**
+   - **Verdict:** **CONSTRAINED TESTING ONLY.**
+   - Usable memory ($\approx 14.3 \text{ GiB}$) can support the base infrastructure stack ($8.8 \text{ GiB}$) and **exactly one single 4.0 GiB VM** ($4.6 \text{ GiB}$ total VM footprint).
+   - *Operational Warning:* Running an 8.0 GiB VM, launching a second VM, or running heavy page-cache operations on a 16 GB node will cause immediate Linux kernel Out-Of-Memory (OOM) kills or Kubelet pod evictions.
+2. **32 GB Physical RAM Node:**
+   - **Verdict:** **RECOMMENDED BENCHMARK BASELINE.**
+   - Usable memory ($\approx 29.3 \text{ GiB}$) comfortably accommodates the base stack, an 8.0 GiB high-performance benchmarking VM (or two 4.0 GiB VMs), the transient dual-allocation buffer during live-migration cutover, the NFS gateway, and high-throughput FIO I/O queue buffers with $\ge 3 \text{ GiB}$ of safety headroom.
