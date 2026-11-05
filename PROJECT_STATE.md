@@ -5,15 +5,15 @@
 **Program:** Zoho SETU — College Student Project Program  
 **Active Branch:** `main`  
 **Current Phase:** Phase 2 — Target Infrastructure Preparation & Kubernetes Cluster Bootstrap  
-**Current Chunk:** Chunk 2.0 — Infrastructure Readiness & Access Planning  
-**Chunk 2.0 Status:** 🟢 COMPLETED (Readiness Assessment: NOT READY — Awaiting Lab Allocation & Permissions)  
-**Overall Completion:** 6 / 15 Milestones Completed (Foundation, Feasibility, Lifecycle & Reconciliation Audits, Baseline Closure, Infrastructure Readiness Planning)  
+**Current Chunk:** Chunk 2.1 — Project Strategy Alignment & Development Environment Assessment  
+**Chunk 2.1 Status:** 🟢 COMPLETED (Scope Preserved, Strategy Decoupled via ADR-011, Roadmap Established)  
+**Overall Completion:** 7 / 16 Milestones Completed (Foundation, Feasibility, Lifecycle & Reconciliation Audits, Baseline Closure, Readiness Planning, Strategy Alignment)  
 
 ---
 
 > [!IMPORTANT]
-> **Single Source of Truth:**  
-> This document tracks the precise, factual progress of the project. No feature is marked as complete or verified until empirical evidence is gathered and recorded in the repository. Arbitrary percentage estimations are strictly disallowed.
+> **Single Source of Truth & Governance Alignment:**  
+> This document tracks the precise, factual progress of the project. No feature is marked as complete or verified until empirical evidence is gathered and recorded in the repository. In accordance with **ADR-011**, institutional hardware allocation is decoupled from development gating, and every feature is tracked across three explicit states: `IMPLEMENTED`, `VALIDATED`, and `INFRASTRUCTURE-DEPENDENT`.
 
 ---
 
@@ -28,17 +28,17 @@
 | **1.10**| **Final Compatibility & Resource Reconciliation** | 🟢 **COMPLETED** | Chunk 1.10 | containerd Recommendation Matrix Reconciled, Mayastor 2.12.2 E2E on K8s 1.35.6, Exact Binary Memory Math, Asymmetric Migration Budgets, Authoritative Ports |
 | **1.11**| **Final Deployment Baseline and Evidence Closure** | 🟢 **COMPLETED** | Chunk 1.11 | Candidate B Preferred Target, OpenEBS v4.6.x Chart Mapping Verified, MemTotal Memory Sizing & Headroom, Canonical 20-Port Matrix, Single-Writer Migration Protocol, Verified Rebuild Parameters |
 | **2.0**| **Infrastructure Readiness & Access Planning** | 🟢 **COMPLETED** | Chunk 2.0 | Evidence-Based Readiness Tracker, Refined College Questionnaire, Administrative Access Matrix, Fallback Hierarchy, Objective Assessment (NOT READY) |
-| **2.1**| Host Pre-flight Verification & Linux Environment Setup | ⚪ NOT STARTED | Chunk 2.1 | Awaiting College Hardware Allocation & Administrative Sudo Grant |
-| **2.2**| Kubernetes Cluster Bootstrap via kubeadm | ⚪ NOT STARTED | Chunk 2.2 | Awaiting Host Pre-flight Completion & Network Setup |
-| **3** | OpenEBS Mayastor Storage Engine Deployment | ⚪ NOT STARTED | Chunk 3 | Pending Authorization |
-| **4** | Storage Pools, Replication & Volume Provisioning | ⚪ NOT STARTED | Chunk 4 | Pending Authorization |
-| **5** | KubeVirt Virtualization Stack Integration | ⚪ NOT STARTED | Chunk 5 | Pending Authorization |
-| **6** | Virtual Machine Live Migration Implementation | ⚪ NOT STARTED | Chunk 6 | Pending Authorization |
-| **7** | Dynamic Resource Hot-Plugging (CPU, Mem, Disk, Net) | ⚪ NOT STARTED | Chunk 7 | Pending Authorization |
-| **8** | Storage Performance Benchmarking (FIO Matrix) | ⚪ NOT STARTED | Chunk 8 | Pending Authorization |
-| **9** | Storage Failure, Fault Injection & Recovery Drills | ⚪ NOT STARTED | Chunk 9 | Pending Authorization |
-| **10** | Metrics, Telemetry & Full-Stack Observability | ⚪ NOT STARTED | Chunk 10 | Pending Authorization |
-| **11** | Final Project Report, Analysis & Viva Preparation | ⚪ NOT STARTED | Chunk 11 | Pending Authorization |
+| **2.1**| **Project Strategy Alignment & Environment Assessment** | 🟢 **COMPLETED** | Chunk 2.1 | ADR-011 Strategy Realignment, 12-Component Feasibility Matrix, 5 Execution Pathways, 3-State Completion Framework, 10-Milestone Development Roadmap |
+| **M1** | Milestone 1: Dev Environment Preparation & Automated Tooling | ⚪ NOT STARTED | Phase 2 | Toolchain, Linters, Host Preflight Script (`01-host-preflight.sh`) |
+| **M2** | Milestone 2: Kubernetes Cluster Architecture & Multi-Node Provisioning | ⚪ NOT STARTED | Phase 2 | Kubeadm Configurations, Calico BGP, Local Dev Cluster |
+| **M3** | Milestone 3: OpenEBS Mayastor Storage Engine Deployment | ⚪ NOT STARTED | Phase 2 | Mayastor Helm Values, DiskPool CRDs, StorageClasses |
+| **M4** | Milestone 4: KubeVirt Virtualization Stack Integration | ⚪ NOT STARTED | Phase 2 | Operator, CDI, Local `/dev/kvm` Micro-VM Test |
+| **M5** | Milestone 5: Storage Subsystem Integration with Virtual Machines | ⚪ NOT STARTED | Phase 2 | Direct Block, Clustered NFS Gateway, Native RWX Block |
+| **M6** | Milestone 6: VM Live Migration & Runtime Resource Hot-Plugging | ⚪ NOT STARTED | Phase 3 | Single-Writer Verification Harness, 6-Scenario Suite, Hot-Plug |
+| **M7** | Milestone 7: Distributed Storage Failure Recovery & Rebuild Drills | ⚪ NOT STARTED | Phase 3 | Fault Injection Automation, Write-Log Replay, Anti-Affinity |
+| **M8** | Milestone 8: Storage Performance Benchmarking (FIO Matrix) | ⚪ NOT STARTED | Phase 3 | 6 FIO Profiles, Multi-Tier Execution, Parser Tooling |
+| **M9** | Milestone 9: Full-Stack Telemetry, Monitoring & Observability | ⚪ NOT STARTED | Phase 3 | Prometheus ServiceMonitors, 3 Custom Grafana Dashboards |
+| **M10**| Milestone 10: Final System Integration, Evidence & Submission | ⚪ NOT STARTED | Phase 4 | Master Integration Suite, Publication Graphs, Viva Defense Kit |
 
 ---
 
@@ -91,10 +91,20 @@
   - **Network Readiness Checklist:** Mapped Layer-2 subnet, static IP, DNS, NTP, and firewall communication paths.
   - **Infrastructure Fallback Hierarchy:** Documented 4 fallback tiers prioritizing physical college servers and lab desktops over nested virtualization, with commercial cloud prohibited and development laptop excluded.
   - **Readiness Verdict (NOT READY):** Established objective assessment criteria; formally declared environment **NOT READY** due to pending machine allocation, sudo grants, IP assignments, and disk dedications.
-- [x] Synchronized `docs/infrastructure-readiness-tracker.md`, `docs/college-infrastructure-questionnaire.md`, and `PROJECT_STATE.md`.
+- [x] **Chunk 2.1 Project Strategy Alignment & Development Environment Assessment:**
+  - **Empirical Environment Assessment (`docs/development-environment-assessment.md`):** Directly audited host Windows 11 (AMD Ryzen 5 7535HS, 6C/12T, 8 GB DDR5, ~1.0 GB free, 19.3 GB disk free) and WSL2 Ubuntu 24.04 (3.4 GiB RAM, 2.8 GiB avail, kernel 6.6.87); verified `svm` and `sse4_2` CPU flags; verified active `/dev/kvm` hardware acceleration inside WSL2; detected Docker v29.1 and containerd v2.2.1.
+  - **12-Component Feasibility Matrix:** Evaluated all 12 target components across 5 standardized feasibility categories, establishing clear boundaries between real execution, independent testing, configuration authoring, and simulation.
+  - **Alternative Execution Infrastructure Evaluation:** Evaluated 5 execution pathways (WSL2, local dev cluster, alternative workstation, college servers, temporary final testing window) maintaining the zero-cost mandate.
+  - **Three-State Feature Completion Framework:** Formalized `IMPLEMENTED`, `VALIDATED`, and `INFRASTRUCTURE-DEPENDENT` tracking standards to maintain complete scientific integrity.
+  - **Comprehensive Development Roadmap (`docs/development-roadmap.md`):** Formulated authoritative 10-milestone execution architecture eliminating artificial subchunks while preserving all dependencies.
+  - **Architectural Decision Record (`DECISIONS.md`):** Recorded ADR-011 formally adopting scope preservation, institutional decoupling, and the 3-state evidence framework.
+  - **Agent Governance Directives (`AGENTS.md`):** Updated Section 2 with 12 mandatory rules and Section 6 with the 3-state framework.
+- [x] Synchronized `docs/infrastructure-readiness-tracker.md`, `docs/deployment-options.md`, `RESEARCH.md`, `ARCHITECTURE.md`, `README.md`, and `PROJECT_STATE.md`.
 
 ### 2.2 Verified Infrastructure Features
-- [x] **Local Hardware Capability:** Verified AMD Ryzen 5 7535HS (6C/12T), AMD-V enabled, 8 GB DDR5 RAM (~750 MB free), 1x 512 GB NVMe (~17 GB free on C:), WSL2 Ubuntu installed.
+- [x] **Local Hardware Capability:** Verified AMD Ryzen 5 7535HS (6C/12T), AMD-V enabled, 8 GB DDR5 RAM (~1.0 GB free), 1x 512 GB NVMe (~19.3 GB free on C:), WSL2 Ubuntu 24.04 installed.
+- [x] **Local Virtualization Acceleration:** Verified `/dev/kvm` character device (`crw-rw---- 1 root kvm 10, 232`) is present and functional inside WSL2 Ubuntu 24.04.
+- [x] **Local Container Runtimes:** Verified Docker v29.1.3 and containerd v2.2.1 installed and operational inside WSL2.
 - [x] **Local Workload Boundary:** Formally confirmed that hosting a 4-node cluster with Mayastor SPDK and KubeVirt locally is impossible due to memory, HugePage, and dedicated block device deficits.
 
 ### 2.3 Features Awaiting Target Infrastructure & Execution
@@ -120,8 +130,8 @@
 
 | Resource Tier | Environment Details | Current Operational Status | Constraints & Architectural Impact |
 | :--- | :--- | :--- | :--- |
-| **Local Workstation** | Windows 11 Home (Build 26300) + WSL2<br/>AMD Ryzen 5 7535HS (6C/12T)<br/>8 GB DDR5 RAM, 1x 512 GB NVMe SSD | **AUDITED & VERIFIED** | **Restricted strictly to development and governance.** Available RAM (< 1 GB free) and disk (~17 GB free) prevent running multi-node clusters, HugePages, or SPDK locally. |
-| **Target Remote Lab Nodes** | Minimum 4 Linux Servers<br/>(1 Control Plane + 3 Workers)<br/>Dedicated raw disks, $\ge$6 physical cores, $\ge$16 GB RAM (32 GB pref) | **QUESTIONNAIRE PREPARED** | College laboratory systems unconfirmed. Specifications, network access, and root permissions pending formal inquiry via `docs/college-infrastructure-questionnaire.md`. |
+| **Local Workstation** | Windows 11 Home (Build 26300) + WSL2<br/>AMD Ryzen 5 7535HS (6C/12T)<br/>8 GB DDR5 RAM, 1x 512 GB NVMe SSD | **AUDITED & VERIFIED** | **Active development & verification platform.** Operates client tooling, linters, preflight scripts, manifest generation, and micro-VM tests via `/dev/kvm`. Multi-node Mayastor and 4 GiB VMs cannot run locally. |
+| **Target Remote Lab Nodes** | Minimum 4 Linux Servers<br/>(1 Control Plane + 3 Workers)<br/>Dedicated raw disks, $\ge$6 physical cores, $\ge$16 GB RAM (32 GB pref) | **QUESTIONNAIRE SUBMITTED** | College laboratory systems unconfirmed. Tracked as an optional resource opportunity for wire-speed NVMe-oF benchmarks and full 3-way replicated Mayastor validation. |
 | **Cloud Infrastructure** | Public cloud instances | **PROHIBITED** | Paid cloud services are excluded to keep the project completely cost-free and reproducible on academic lab hardware. |
 
 ---
@@ -133,7 +143,7 @@
    - *Mitigation:* Require 32 GB physical RAM per worker node on target servers for multi-VM live migration (documented in `docs/final-deployment-proposal.md`).
 2. **KubeVirt Hardware Virtualization (`/dev/kvm`) Requirement:**
    - *Risk:* If target remote nodes run inside nested virtualization layers without nested virtualization enabled, KubeVirt falls back to slow QEMU emulation (TCG).
-   - *Mitigation:* Pre-flight validation scripts must verify `/dev/kvm` hardware acceleration before cluster deployment proceeds.
+   - *Mitigation:* Pre-flight validation scripts (`01-host-preflight.sh`) audit `/dev/kvm` hardware acceleration before cluster deployment proceeds.
 3. **Storage Access Mode Mismatch for Live Migration (RWO vs. RWX):**
    - *Risk:* Mayastor natively provisions RWO block volumes, whereas KubeVirt live migration requires RWX shared storage.
    - *Mitigation:* Comparative Dual-Path Strategy (ADR-008 & ADR-010): native Mayastor RWX block volumes as primary innovation target (evaluated across 6 evidence-based failure scenarios), and an NFS gateway over Mayastor RWO as the conservative fallback baseline.
@@ -155,6 +165,7 @@
 - **ADR-008:** Dual-Tier storage architecture for high-performance block and live migration $\rightarrow$ `AMENDED` (Comparative 3-tier strategy)
 - **ADR-009:** Target software stack baseline specification (K8s 1.28 / Ubuntu 22.04) $\rightarrow$ `SUPERSEDED` (Rejected due to EOL)
 - **ADR-010:** Supported modern software stack baseline (Candidate B: K8s 1.36.x + containerd 2.3 LTS preferred qualification target vs. Candidate A: K8s 1.35.x comparison baseline; OpenEBS v4.6.x chart mapping) $\rightarrow$ `PROPOSED / AUDITED & RECONCILED`
+- **ADR-011:** Project strategy realignment & decoupling from institutional gating $\rightarrow$ `ACCEPTED / ACTIVE`
 
 ---
 
@@ -165,29 +176,26 @@
 - **2026-11-05:** Completed Chunk 1.8 Technical Research Corrections: reassessed lifecycles, investigated native RWX block volumes, and validated 20 firewall ports (`c457aac`, `aea2292`, `9c9b187`, `87fb562`).
 - **2026-11-05:** Completed Chunk 1.9 Final Lifecycle, Compatibility and Resource Audit: eliminated EOL k8s 1.34 and containerd 1.7; allocated 2 dedicated SPDK busy-polling cores; audited 20 ports; specified write log rebuild and 6-scenario live migration (`5271f31`, `ce716e2`, `7883dcf`, `368e8e8`).
 - **2026-11-05:** Completed Chunk 1.10 Final Compatibility and Resource Reconciliation: containerd matrix reconciled; memory calculations and asymmetric migration budgets audited; evidence-based RWX migration safety formulated (`b616ead`, `25cebbe`, `fac476d`, `302b1f8`).
-- **2026-11-05:** Implemented Chunk 1.11 Final Deployment Baseline and Evidence Closure:
-  - Commit 1 (`b361cc6`): `docs: establish candidate b as preferred baseline and verify openebs chart mapping` — Established Candidate B as preferred experimental qualification baseline, Candidate A as comparison baseline; verified published umbrella chart `openebs` v4.6.x (Mayastor subchart v2.12.2); excluded K8s 1.37.
-  - Commit 2 (`ac03852`): `docs: update canonical port matrix and calculate memtotal headroom` — Recalculated memory headroom from usable `MemTotal` (14.40–14.70 GiB on 16 GB, 29.30–29.60 GiB on 32 GB); demonstrated loaded-destination Case 2 fatal deficit ($-0.60\text{ to }-5.20\text{ GiB}$); built canonical 20-port matrix.
-  - Commit 3 (`00ca169`): `docs: specify migration single-writer protocol and rebuild configuration evidence` — Formulated single-writer protocol with 512-byte record layout, sequence numbers, writer IDs/epochs, CRC32C, QMP events, and clock drift bounds; verified `--faulted-child-wait-period` (10m default) and clarified node unreachable governance.
-  - Commit 4 (`525563f`): `docs: finalize deployment proposal and synchronize project state for chunk 1.11` — Synchronized `docs/final-deployment-proposal.md`, `ARCHITECTURE.md`, `DECISIONS.md`, `README.md`, `RESEARCH.md`, and `PROJECT_STATE.md`.
-- **2026-11-05:** Implemented Chunk 2.0 Infrastructure Readiness & Access Planning:
-  - Commit 1 (`7349098`): `docs: refine college infrastructure questionnaire` — Enhanced inquiry document into a professional, concise allocation request covering node topology, secondary raw block devices, KVM hardware acceleration, HugePages, static networking, and administrative permissions.
-  - Commit 2 (`ace13f6`): `docs: create infrastructure readiness tracker and access planning` — Created authoritative readiness tracker (`docs/infrastructure-readiness-tracker.md`) across 17 technical items using strict governance statuses (`UNKNOWN`, `REQUESTED`, `CONFIRMED`, `UNAVAILABLE`, `BLOCKED`); defined hardware allocation ledger, administrative access matrix, network readiness, institutional operational constraints, fallback hierarchy, and objective readiness assessment (`NOT READY`).
-  - Commit 3: `docs: update project state and readiness tracker synchronization` — Synchronized `PROJECT_STATE.md` and repository status.
+- **2026-11-05:** Completed Chunk 1.11 Final Deployment Baseline and Evidence Closure: Candidate B preferred baseline; OpenEBS v4.6.x verified; MemTotal headroom recalculated; canonical 20-port matrix finalized; single-writer protocol specified (`b361cc6`, `ac03852`, `00ca169`, `525563f`).
+- **2026-11-05:** Completed Chunk 2.0 Infrastructure Readiness & Access Planning: refined college infrastructure questionnaire; created infrastructure readiness tracker across 17 items (`7349098`, `ace13f6`, `35cdf71`).
+- **2026-11-05:** Implemented Chunk 2.1 Project Strategy Alignment & Development Environment Assessment:
+  - Commit 1 (`d2aa1b0`): `docs: create development environment assessment and component feasibility matrix` — Audited local Windows 11 & WSL2 Ubuntu 24.04 environment (verified `/dev/kvm`, 6C/12T AMD CPU, 3.4 GiB WSL RAM); created 12-component feasibility matrix; evaluated 5 execution pathways; formalized 3-state completion framework (`IMPLEMENTED`, `VALIDATED`, `INFRASTRUCTURE-DEPENDENT`).
+  - Commit 2 (`c0dba97`): `docs: establish comprehensive development roadmap` — Formulated authoritative 10-milestone execution architecture (`docs/development-roadmap.md`) covering toolchain, cluster setup, Mayastor, KubeVirt, storage integration, live migration, fault injection, FIO benchmarks, observability, and final report.
+  - Commit 3 (`1d71f63`): `docs: record adr-011 for strategy realignment and institutional decoupling` — Recorded ADR-011 in `DECISIONS.md`.
+  - Commit 4 (`b39029f`): `docs: update governance operating directives for strategy alignment` — Updated `AGENTS.md` with 12 operating rules and 3-state completion standards.
+  - Commit 5: `docs: synchronize project state and tracking documents for chunk 2.1` — Synchronized `PROJECT_STATE.md`, `README.md`, `ARCHITECTURE.md`, `RESEARCH.md`, `docs/infrastructure-readiness-tracker.md`, and `docs/deployment-options.md`.
 
 ---
 
 ## 7. Next Authorized Action
 
-Chunk 2.0 is fully complete and validated. **STOP AND AWAIT USER APPROVAL.**  
-Current Readiness State: **`NOT READY`** (Awaiting formal laboratory machine allocation and administrative credentials).
+Chunk 2.1 is fully complete and validated. **STOP AND AWAIT USER APPROVAL.**  
+Current Strategy State: **DECOUPLED & READY FOR MILESTONE 1 (DEVELOPMENT ENVIRONMENT PREPARATION).**
 
-Next steps upon explicit user authorization and laboratory response:
-1. Deliver `docs/college-infrastructure-questionnaire.md` to Department Laboratory Administration.
-2. Upon return of completed questionnaire and credential issuance:
-   - Record assigned hostnames, CPU models, RAM sizes, and disk paths in `docs/infrastructure-readiness-tracker.md`.
-   - Update readiness status to `CONDITIONALLY READY` or `READY FOR HOST PREFLIGHT`.
-3. Proceed to **Chunk 2.1 — Host Pre-flight Verification & Linux Environment Setup**:
-   - Author non-destructive inspection scripts (`scripts/setup/01-host-preflight.sh`) to verify `/dev/kvm`, HugePages, and `nvme-tcp`.
-   - Author prerequisite configuration scripts (`scripts/setup/02-node-prerequisites.sh`).
-4. **DO NOT start host preflight scripts or cluster bootstrap until college hardware is allocated and user authorization is granted.**
+Next steps upon explicit user authorization:
+- **Milestone 1 — Development Environment Preparation & Automated Tooling:**
+  1. Author non-destructive host pre-flight verification script (`scripts/setup/01-host-preflight.sh`) auditing CPU flags, HugePages, `/dev/kvm`, and `nvme-tcp`.
+  2. Author baseline node preparation script (`scripts/setup/02-node-prerequisites.sh`).
+  3. Install and configure local development linters (`kubeconform`, `yamllint`, `shellcheck`) and CLI utilities (`kubectl`, `helm`, `virtctl`) inside WSL2.
+  4. Test pre-flight script locally against WSL2 Ubuntu 24.04 to verify detection logic.
+- **DO NOT start package installations or script execution until explicit user authorization is granted.**

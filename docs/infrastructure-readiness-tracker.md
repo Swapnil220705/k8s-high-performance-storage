@@ -4,21 +4,26 @@
 **Project ID:** SWFW_5S_08  
 **Program:** Zoho SETU — College Student Project Program  
 **Document Status:** ACTIVE READINESS TRACKER  
-**Last Updated:** 2026-11-05 (Chunk 2.0 Infrastructure Readiness & Access Planning)  
+**Last Updated:** 2026-11-05 (Chunk 2.1 Strategy Realignment & ADR-011 Decoupling)  
 **Governance Standard:** Zero Fabricated Claims — Evidence-Based Tracking Only  
 
 ---
 
 > [!IMPORTANT]
-> **Readiness Evaluation & Status Governance:**  
-> This tracker serves as the authoritative, evidence-based ledger of target laboratory infrastructure availability, access permissions, and hardware capabilities. In compliance with project governance (`AGENTS.md`), no requirement may be marked as **CONFIRMED** without concrete empirical evidence (e.g., terminal output, signed approval, or physical hardware audit logs).
+> **Readiness Evaluation & Strategy Realignment (ADR-011):**  
+> This tracker serves as the authoritative, evidence-based ledger of target laboratory infrastructure availability, access permissions, and hardware capabilities.
+>
+> In accordance with the **Chunk 2.1 Strategy Realignment & ADR-011**:
+> 1. **Complete Original Scope Preserved:** All 12 architectural capabilities remain target project deliverables.
+> 2. **Decoupled Development Continuity:** Institutional hardware allocation is an **optional resource opportunity rather than a mandatory blocking gate**. Project development, configuration authoring, static schema validation, and local functional tests proceed immediately without stalling.
+> 3. **Three-State Tracking:** Capabilities are tracked across `IMPLEMENTED`, `VALIDATED`, and `INFRASTRUCTURE-DEPENDENT` states.
 >
 > Every requirement is classified strictly under one of five standardized statuses:
 > - `UNKNOWN`: Information has not yet been determined or inquired.
 > - `REQUESTED`: Formal inquiry or allocation request has been submitted to laboratory administration.
 > - `CONFIRMED`: Verified with concrete evidence, administrative approval, or direct inspection.
 > - `UNAVAILABLE`: Resource or permission is unavailable in the target environment.
-> - `BLOCKED`: Dependency is missing or denied, preventing further forward progress.
+> - `BLOCKED`: Dependency is missing or denied, preventing further forward progress on that specific item.
 
 ---
 
@@ -32,8 +37,8 @@ The proposed topology requires **1 Kubernetes Control Plane Node** and **3 Dedic
 | **HW-02** | **Worker CPU Capacity** | Mayastor SPDK `io-engine` requires 2 dedicated busy-polling cores (100% saturation by design). 2 cores needed for host OS/K8s daemons, and 2+ cores for guest VM vCPUs. | **Required:** $\ge 6$ Physical Cores per worker.<br/>**Preferred:** 8–16 Physical Cores (x86_64). | **UNKNOWN** | Lab server hardware not yet inspected. | College Lab Administrator / Systems Engineer | Inspect `/proc/cpuinfo` and `lscpu` upon access. |
 | **HW-03** | **Worker Memory Capacity** | Base stack consumes 5.90–8.70 GiB. Guest VM requires 4.60–5.20 GiB. Live migration target requires 10.70–14.40 GiB (idle) or 15.30–19.60 GiB (loaded). | **Required:** 16 GB physical RAM (constrained baseline).<br/>**Preferred:** 32 GB physical RAM (mandatory for multi-VM live migration). | **UNKNOWN** | Lab server hardware not yet inspected. | College Lab Administrator / Systems Engineer | Inspect `/proc/meminfo` (`MemTotal`) upon access. |
 | **HW-04** | **Dedicated Raw Storage Disks** | Mayastor `DiskPool` primitives require dedicated, unpartitioned block devices. Cannot share filesystem with OS. | **Required:** 1 dedicated raw SSD/NVMe ($\ge 50\text{ GB}$) per worker node.<br/>**Preferred:** Dedicated 120+ GB NVMe SSD. | **UNKNOWN** | Drive allocation unconfirmed. | College Lab Administrator / Systems Engineer | Inspect `lsblk`, `fdisk -l`, and `nvme list` upon access. |
-| **HW-05** | **Hardware Virtualization (KVM)** | KubeVirt requires hardware KVM acceleration (`/dev/kvm`). Software emulation (TCG) ruins benchmark validity. | **Required:** Intel VT-x (`vmx`) or AMD-V (`svm`) enabled in BIOS/UEFI; `/dev/kvm` accessible. | **UNKNOWN** | Host BIOS settings unconfirmed. | College Lab Administrator | Run `kvm-ok` and inspect `ls -l /dev/kvm` upon access. |
-| **HW-06** | **CPU SSE4.2 Instruction Set** | SPDK user-space driver compilation and CRC32C hardware acceleration require SSE4.2 instructions. | **Required:** `sse4_2` CPU flag present in `/proc/cpuinfo`. | **UNKNOWN** | Host CPU architecture unconfirmed. | College Lab Administrator | Run `grep -i sse4_2 /proc/cpuinfo` upon access. |
+| **HW-05** | **Hardware Virtualization (KVM)** | KubeVirt requires hardware KVM acceleration (`/dev/kvm`). Software emulation (TCG) ruins benchmark validity. | **Required:** Intel VT-x (`vmx`) or AMD-V (`svm`) enabled in BIOS/UEFI; `/dev/kvm` accessible. | **UNKNOWN** | Host BIOS settings unconfirmed. (Local WSL2 has `/dev/kvm` verified). | College Lab Administrator | Run `kvm-ok` and inspect `ls -l /dev/kvm` upon access. |
+| **HW-06** | **CPU SSE4.2 Instruction Set** | SPDK user-space driver compilation and CRC32C hardware acceleration require SSE4.2 instructions. | **Required:** `sse4_2` CPU flag present in `/proc/cpuinfo`. | **UNKNOWN** | Host CPU architecture unconfirmed. (Local CPU has `sse4_2` verified). | College Lab Administrator | Run `grep -i sse4_2 /proc/cpuinfo` upon access. |
 | **HW-07** | **2 MiB HugePages Support** | SPDK memory pool management and lockless ring buffers require pre-allocated 2 MiB HugePages locked out of kernel swap. | **Required:** 1024 pages of 2 MiB HugePages (2048 MiB = 2 GiB) per storage worker. | **UNKNOWN** | Kernel HugePage support unconfirmed. | College Lab Administrator / Systems Engineer | Test `sysctl -w vm.nr_hugepages=1024` in preflight. |
 | **ACC-01** | **Root / Sudo Privileges** | Mandatory for loading kernel modules, installing containerd/kubeadm, configuring HugePages, and raw disk formatting. | **Required:** Full root or passwordless `sudo` on all 4 cluster nodes. | **REQUESTED** | Listed in questionnaire Section B. | College Lab Administrator / Dept Coordinator | Request formal administrative grant. |
 | **ACC-02** | **Remote SSH Access** | Required for executing remote cluster bootstrap, automation scripts, and benchmark telemetry. | **Required:** SSH key authentication from local development machine to all nodes. | **REQUESTED** | Listed in questionnaire Section E. | College Lab Administrator / Network Admin | Obtain IP/jump-host details and configure SSH keys. |
@@ -239,7 +244,7 @@ To maintain scientific rigor and eliminate premature deployment assumptions, clu
 │ CONDITIONALLY READY          │ • Machines assigned, but secondary drive or BIOS setting pending. │
 │                              │ • Non-destructive host preflight scripts authorized to inspect.  │
 ├──────────────────────────────┼──────────────────────────────────────────────────────────────────┤
-│ NOT READY (Current Status)   │ • Physical hardware has not been formally allocated.             │
+│ NOT READY (Remote Target)    │ • Physical hardware has not been formally allocated.             │
 │                              │ • Administrative access has not been granted.                    │
 │                              │ • IP addresses and network topology remain unassigned.           │
 │                              │ • Questionnaire pending departmental review and completion.      │
@@ -248,7 +253,7 @@ To maintain scientific rigor and eliminate premature deployment assumptions, clu
 
 ### 7.2 Current Assessment Verdict
 
-$$\mathbf{READINESS\ VERDICT:\ NOT\ READY}$$
+$$\mathbf{READINESS\ VERDICT:\ NOT\ READY\ (REMOTE\ LAB\ ALLOCATION)}$$
 
 **Engineering Justification:**
 1. **Zero Hardware Allocated:** No physical servers or virtual machines have been formally designated, assigned, or reserved by the college laboratory administration.
@@ -257,20 +262,17 @@ $$\mathbf{READINESS\ VERDICT:\ NOT\ READY}$$
 4. **Network Unassigned:** Static IP addresses, subnet configurations, and switch ports are currently unknown.
 5. **Questionnaire In Progress:** `docs/college-infrastructure-questionnaire.md` has been refined and prepared, but formal institutional feedback has not yet been received.
 
-### 7.3 Primary Blockers & Next Required Actions
+### 7.3 Decoupled Project Execution (ADR-011)
 
-| Blocker ID | Description of Blocker | Impact on Project Pipeline | Required Action & Responsible Entity |
-| :---: | :--- | :--- | :--- |
-| **BLK-01** | **Machine Allocation Pending** | Prevents running non-destructive host preflight scripts (`01-host-preflight.sh`). | Submit `docs/college-infrastructure-questionnaire.md` to Department Laboratory Administrator. |
-| **BLK-02** | **Administrative Access Pending** | Cannot verify `/dev/kvm`, HugePages, or kernel modules on target nodes. | Obtain sudo credentials or SSH keys from Department Systems Engineer. |
-| **BLK-03** | **Network Static IPs Pending** | Cannot write deterministic `kubeadm` init manifests or cluster configurations. | Secure 4 static IPv4 assignments on the lab network from Network Administrator. |
-| **BLK-04** | **Dedicated Disk Sign-off Pending**| Cannot author Mayastor `DiskPool` custom resources. | Confirm dedicated secondary block device paths (e.g., `/dev/nvme1n1` or `/dev/sdb`) with Lab Administrator. |
+In accordance with **ADR-011**, while the remote laboratory hardware status is objectively **`NOT READY`**, **the project implementation pipeline is NOT BLOCKED**:
+- **Local Engineering Track:** Automated pre-flight inspection scripts, `kubeadm` manifests, Helm configurations, KubeVirt micro-VM tests (`/dev/kvm` verified), FIO job profiles, and Grafana dashboards are developed and verified locally in WSL2.
+- **Remote Institutional Track:** `docs/college-infrastructure-questionnaire.md` remains submitted to laboratory administration to secure physical hardware for final multi-node execution and wire-speed NVMe-oF benchmarks.
 
 ---
 
 ## 8. Summary & Next Steps
 
-This readiness tracker establishes a transparent, evidence-based baseline. Until the blockers above are resolved through formal laboratory allocation:
-- **No infrastructure commands or preflight scripts will be executed on unconfirmed systems.**
-- **No cluster bootstrapping will be initiated.**
-- All requirements remain accurately tracked as `UNKNOWN`, `REQUESTED`, or `BLOCKED`.
+This readiness tracker establishes a transparent, evidence-based baseline:
+- Remote college infrastructure allocation continues to be tracked as an optional resource opportunity.
+- All implementation and validation proceed in accordance with the 10-milestone roadmap ([`docs/development-roadmap.md`](development-roadmap.md)).
+- Features dependent on physical multi-node hardware or dedicated NVMe drives remain categorized as **`INFRASTRUCTURE-DEPENDENT`** until remote deployment.

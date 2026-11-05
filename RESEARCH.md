@@ -168,3 +168,10 @@
 - **Official Documentation:** [Prometheus Documentation](https://prometheus.io/docs/) | [Grafana Documentation](https://grafana.com/docs/)
 - **Important Implementation Questions:** What scrape interval balances real-time metric fidelity with minimal CPU scraping overhead on the storage nodes?
 - **Research Status:** Architecture planned; dashboard deployment pending Chunk 10.
+
+### 23. Local Development Tooling & Lightweight Single-Node Validation Harness
+- **What Needs to be Researched:** Development toolchain in WSL2 Ubuntu 24.04 (Docker, containerd, `kubeconform`, `yamllint`, `shellcheck`, lightweight single-node dev cluster via Kind/K3s) with hardware `/dev/kvm` acceleration.
+- **Why It Matters to Our Project:** Enables continuous engineering progress, syntax checking, and micro-VM lifecycle testing locally while preserving the full 4-node target architecture for remote hardware deployment.
+- **Official Documentation:** [Kubeconform](https://github.com/yannh/kubeconform) | [KubeVirt on Kind](https://kubevirt.io/user-guide/operations/installation/)
+- **Important Implementation Questions:** How can KubeVirt's `virt-handler` be configured within a lightweight dev container to reliably access `/dev/kvm` without host memory exhaustion?
+- **Research Status:** Local environment verified in Chunk 2.1 (2026-11-05). `/dev/kvm` confirmed active in WSL2 Ubuntu 24.04; Docker v29.1 and containerd v2.2.1 detected. Manifest linting and micro-VM test harness integrated into Milestone 1 and 2.

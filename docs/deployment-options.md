@@ -2,7 +2,7 @@
 
 **Project Name:** Deploy High-Performance Storage for Kubernetes  
 **Project ID:** SWFW_5S_08  
-**Audit Date:** 2026-11-05 (Chunk 1.9 Final Resource Audit)  
+**Audit Date:** 2026-11-05 (Chunk 2.1 Strategy Realignment & Execution Pathways)  
 **Document Status:** TECHNICAL COMPARISON & DEPLOYMENT STRATEGY  
 **Governance Scope:** Resource Viability & Institutional Alignment  
 
@@ -10,7 +10,9 @@
 
 > [!NOTE]
 > **Evaluation Objective:**  
-> To determine the most scientifically valid, cost-effective, and operationally viable infrastructure environment for deploying a 4-node Kubernetes cluster with OpenEBS Mayastor and KubeVirt.
+> To determine the most scientifically valid, cost-effective, and operationally viable infrastructure environment for developing, testing, and deploying a 4-node Kubernetes cluster with OpenEBS Mayastor and KubeVirt.
+>
+> In accordance with **ADR-011**, college laboratory allocation is decoupled from development gating. The project authors, lints, and validates all configurations locally while staging physical hardware tests for remote execution.
 
 ---
 
@@ -21,14 +23,14 @@
 | **Financial Cost** | **Zero ($0.00)** | **Zero ($0.00)** | **Zero ($0.00)** | Limited Free Tier / Rapidly Incurs Charges | **Zero ($0.00)** |
 | **Node Count Potential** | 4 Dedicated Nodes (1 CP + 3 Workers) | 4+ Physical Desktop PCs | 4 Virtual Machines on single host | Typically 1–2 small instances free | 1 Physical Host |
 | **CPU Resources** | **8–16+ Cores per Server** (Xeon/EPYC) | **6+ Cores per PC** (Core i5/i7) | 16–32 vCPUs carved from hypervisor | 1–2 vCPUs per free instance | 6 Cores / 12 Threads (AMD Ryzen 5) |
-| **RAM per Node** | **16 GB – 64+ GB DDR4/DDR5** | **16 GB DDR4 (8 GB Unviable)** | **16 GB – 32 GB per VM** (if host has $\ge$64GB) | 1 GB – 4 GB max free RAM | 8 GB Total (~7.2 GB visible, <1GB free) |
-| **Dedicated Raw Storage** | High (Dedicated SAS/SATA/NVMe drives) | Moderate (Secondary SSD or unpartitioned space) | Virtual Disks (emulated block via hypervisor) | Small EBS/Persistent Disks ($\le$30 GB) | Single 512 GB NVMe (OS drive, ~17GB free) |
-| **Hardware KVM (`/dev/kvm`)** | **Native Bare-Metal Access** | **Native Bare-Metal Access** | Requires Nested Virt (`host-passthrough`) | Typically blocked or premium instance required | AMD-V enabled, but RAM prevents local VMs |
+| **RAM per Node** | **16 GB – 64+ GB DDR4/DDR5** | **16 GB DDR4 (8 GB Unviable)** | **16 GB – 32 GB per VM** (if host has $\ge$64GB) | 1 GB – 4 GB max free RAM | 8 GB Total (~7.2 GB visible, ~1.0 GB free) |
+| **Dedicated Raw Storage** | High (Dedicated SAS/SATA/NVMe drives) | Moderate (Secondary SSD or unpartitioned space) | Virtual Disks (emulated block via hypervisor) | Small EBS/Persistent Disks ($\le$30 GB) | Single 512 GB NVMe (OS drive, ~19 GB free) |
+| **Hardware KVM (`/dev/kvm`)** | **Native Bare-Metal Access** | **Native Bare-Metal Access** | Requires Nested Virt (`host-passthrough`) | Typically blocked or premium instance required | AMD-V enabled; `/dev/kvm` verified inside WSL2 |
 | **Network Fabric** | 1 Gbps / 10 Gbps switched LAN | 1 Gbps standard lab LAN | Virtual Switch (high virtual throughput) | Cloud VPC (bandwidth throttled on free tier) | Internal virtual bridge only |
 | **Mayastor SPDK Feasibility** | **FEASIBLE (Meets all prerequisites)** | **FEASIBLE (Only if $\ge$16 GB RAM & 6 cores)** | **FEASIBLE (With virtual raw disks)** | **IMPOSSIBLE (Insufficient RAM & HugePages)** | **IMPOSSIBLE (Memory & storage deficit)** |
 | **Live Migration Feasibility** | **FEASIBLE (Real multi-node network)** | **FEASIBLE (Real multi-node network)** | **FEASIBLE (Across nested VMs)** | **IMPOSSIBLE (Resource starvation)** | **IMPOSSIBLE (Single physical node)** |
 | **Administrative Access** | Requires department root/sudo approval | Subject to lab reboot policies / freeze software | Requires hypervisor admin access | Full root access via SSH | Full local administrative access |
-| **Overall Recommendation** | **PRIMARY PREFERRED TARGET** | **SECONDARY PHYSICAL FALLBACK** | **PRIMARY VIRTUAL FALLBACK** | **REJECTED (Technically Infeasible)** | **RESTRICTED TO DEV / DOCS ONLY** |
+| **Overall Recommendation** | **PRIMARY PREFERRED TARGET** | **SECONDARY PHYSICAL FALLBACK** | **PRIMARY VIRTUAL FALLBACK** | **REJECTED (Technically Infeasible)** | **ACTIVE LOCAL DEVELOPMENT & LINTING** |
 
 ---
 
@@ -54,10 +56,10 @@
 - **Disadvantages:** Free tiers provide small burstable instances (e.g., AWS `t2.micro` has 1 vCPU and 1 GB RAM; GCP `e2-micro` has 1 GB RAM). Running Mayastor requires pre-allocating 2 GiB HugePages per worker node, immediately crashing free-tier instances. Bare-metal or large memory instances with dedicated NVMe and nested virtualization (e.g., AWS `i3en.metal` or GCP `c2-standard-16`) cost hundreds of dollars per month and violate our zero-cost mandate.
 - **Technical Verdict:** **REJECTED**. Technically unviable on free tiers; paid cloud is prohibited.
 
-### Option E: Personal Development Laptop
-- **Advantages:** Immediate, unrestricted administrative access; zero dependency on external network policies.
-- **Disadvantages:** Insufficient RAM (8 GB total with < 1 GB available); single NVMe disk with ~17 GB free space; cannot host 3 storage workers, Mayastor, and KubeVirt VMs simultaneously.
-- **Technical Verdict:** **RETAINED EXCLUSIVELY FOR DEVELOPMENT & GOVERNANCE**.
+### Option E: Personal Development Laptop (Windows 11 / WSL2)
+- **Advantages:** Immediate, unrestricted administrative access; zero dependency on external network policies; verified `/dev/kvm` nested virtualization active inside WSL2 Ubuntu 24.04.
+- **Disadvantages:** Insufficient RAM (8 GB total with ~1.0 GB available); single NVMe disk with ~19.3 GB free space; cannot host 3 storage workers, Mayastor, and KubeVirt VMs simultaneously.
+- **Technical Verdict:** **ACTIVE DEVELOPMENT & VERIFICATION PLATFORM** for manifest authoring, linting, toolchain preparation, lightweight single-node dev cluster testing, and harness unit testing.
 
 ---
 
@@ -70,6 +72,11 @@ Paid cloud infrastructure remains **strictly disallowed** by project governance 
 
 ---
 
-## 4. Final Strategy Recommendation
-- **Primary Strategy:** Execute the discovery questionnaire (`docs/college-infrastructure-questionnaire.md`) to secure **Option A** (Physical Linux Servers) or **Option C** (Nested VMs on Campus Hypervisor) providing $\ge$6 cores and $\ge$16 GB RAM per worker.
-- **Contingency Strategy:** If lab servers are delayed, begin authoring and statically validating manifests and pre-flight shell scripts locally on the laptop before remote execution.
+## 4. Alternative Execution Pathways (Chunk 2.1 Alignment)
+
+To maintain continuous development velocity, execution is organized into five complementary pathways documented in [`docs/development-environment-assessment.md`](development-environment-assessment.md):
+1. **Pathway 1 (Local WSL2):** Author all Kubernetes manifests, Helm values, shell scripts, and FIO job profiles.
+2. **Pathway 2 (Local Dev Cluster):** Deploy lightweight single-node cluster in WSL2 (< 2.0 GiB RAM) to validate CRDs, KubeVirt operator, and launch a micro-VM (256 MB RAM) via verified `/dev/kvm`.
+3. **Pathway 3 (Alternative Lab Workstation):** Utilize 16–32 GB lab workstation for multi-node virtual testing if available.
+4. **Pathway 4 (Dedicated College Servers):** Preferred baseline for wire-speed NVMe-oF benchmarks and full 3-way replicated Mayastor validation.
+5. **Pathway 5 (Temporary Testing Window):** Reserve lab systems for a dedicated 2–3 day benchmark run to harvest final evidence.

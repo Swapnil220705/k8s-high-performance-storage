@@ -3,13 +3,22 @@
 **Project Name:** Deploy High-Performance Storage for Kubernetes  
 **Project ID:** SWFW_5S_08  
 **Document Status:** PROPOSED (Target Architecture — Not Yet Deployed or Experimentally Validated)  
-**Last Updated:** 2026-11-05 (Chunk 1.11 Final Baseline & Evidence Closure)  
+**Last Updated:** 2026-11-05 (Chunk 2.1 Strategy Realignment & ADR-011 Decoupling)  
 
 ---
 
 > [!WARNING]
-> **Architectural Status & Disclaimer:**  
-> The system design documented here represents the **target architectural proposal** formulated and audited during the initial project design and feasibility phase. None of the components, node topologies, or inter-service protocols described below have been deployed, configured, or benchmarked at this stage. All performance characteristics and operational behaviors reflect documented upstream technology capabilities and remain **UNVERIFIED ASSUMPTIONS** until empirical validation occurs in subsequent chunks.
+> **Architectural Status & Scope Preservation (ADR-011):**  
+> The system design documented here represents the **authoritative, permanent target architecture** of the project. In accordance with Chunk 2.1 and ADR-011, **the complete original technical scope remains strictly preserved without downscaling**:
+> - 4-node Kubernetes cluster topology.
+> - OpenEBS Mayastor with SPDK and NVMe-oF.
+> - KubeVirt virtual machines with hardware KVM acceleration.
+> - Dual-path virtual machine live migration.
+> - Dynamic CPU, memory, storage, and network hot-plugging.
+> - Failure recovery and replica rebuild drills.
+> - FIO benchmarking matrix and Prometheus/Grafana observability.
+>
+> College infrastructure allocation is treated as an optional resource opportunity rather than a blocking project gate. Development, configuration, script authoring, and component testing proceed immediately using locally available resources, while tracking feature completion across three explicit states: `IMPLEMENTED`, `VALIDATED`, and `INFRASTRUCTURE-DEPENDENT`. All performance characteristics on live NVMe hardware remain unverified until deployment on target hardware.
 
 ---
 
