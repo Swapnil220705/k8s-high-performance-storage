@@ -1,144 +1,147 @@
-# College Infrastructure Requirements & Discovery Questionnaire
+# College Infrastructure Discovery & Allocation Questionnaire
 
 **Project Name:** Deploy High-Performance Storage for Kubernetes  
 **Project ID:** SWFW_5S_08  
 **Program:** Zoho SETU — College Student Project Program  
-**Document Status:** FORMAL INQUIRY SPECIFICATION  
-**Target Audience:** College Laboratory Administrator, Department Systems Engineer, or Faculty Mentor  
+**Document Status:** FORMAL INQUIRY & ALLOCATION REQUEST  
+**Target Recipient:** Department Laboratory Administrator / Systems Engineer / Faculty Project Coordinator  
 
 ---
 
-> [!IMPORTANT]
-> **Context for Laboratory Administrators:**  
-> This project implements a high-performance distributed block storage cluster (OpenEBS Mayastor with SPDK and NVMe over Fabrics) integrated with cloud-native virtualization (KubeVirt) on Kubernetes. To execute real-world performance benchmarking and fault-tolerance drills without financial cost, the deployment is designed to run on physical or high-spec hypervisor-hosted Linux laboratory servers.
+## 1. Project Context & Purpose
+
+This academic project investigates the deployment and performance benchmarking of a high-performance, cloud-native distributed storage architecture on Kubernetes. It integrates **OpenEBS Mayastor** (using SPDK user-space polling and NVMe over Fabrics) with **KubeVirt** to run virtual machines on containerized infrastructure.
+
+To ensure realistic, publishable engineering results without incurring commercial cloud costs, the project is designed to run entirely on **college laboratory infrastructure**.
+
+We request the allocation of **four (4) networked systems** (physical bare-metal servers or high-specification hypervisor virtual machines) for the project duration. Below are the technical specifications and a structured inquiry form.
 
 ---
 
-## 1. Technical Infrastructure Requirements Breakdown
+## 2. Infrastructure Requirements Summary
 
-### 1.1 Node Topology & Sizing Specifications
-
-To achieve true distributed consensus, synchronous 3-way data replication, and virtual machine live migration, the target cluster requires **1 Control Plane Node** and **3 Dedicated Storage & Virtualization Worker Nodes**:
-
-| Node Role | Minimum Specification (Functional Baseline) | Preferred Specification (Optimal Benchmarking) | Critical Architectural Function |
+| Component | Minimum Functional Requirement | Preferred Benchmarking Specification | Purpose & Technical Justification |
 | :--- | :--- | :--- | :--- |
-| **Control Plane (Node 0)** | • 2 Physical CPU Cores (x86_64)<br/>• 4 GB RAM<br/>• 40 GB Storage (OS & etcd)<br/>• 1x 1 Gbps NIC | • 4 Physical CPU Cores (x86_64)<br/>• 8 GB RAM<br/>• 100 GB SSD (High write endurance for etcd)<br/>• 1x 1 Gbps / 10 Gbps NIC | Hosts Kubernetes API Server, etcd database, scheduler, controller-manager, and Mayastor control plane agents. Untainted for workloads in minimal setups. |
-| **Worker Node 1 (Storage + VM)** | • 4 Physical CPU Cores (x86_64)<br/>• 16 GB DDR4/DDR5 RAM<br/>• 40 GB OS Disk<br/>• 1x Dedicated 50+ GB SSD/NVMe<br/>• 1x 1 Gbps NIC | • 8+ Physical CPU Cores (x86_64)<br/>• 32 GB DDR4/DDR5 RAM<br/>• 100 GB OS Disk<br/>• 1x Dedicated 120+ GB NVMe SSD<br/>• 1x 10 Gbps NIC (or dual 1 Gbps) | Runs Mayastor `io-engine` (SPDK), DiskPool 1, KubeVirt `virt-handler`, and active source guest virtual machines. |
-| **Worker Node 2 (Storage + VM)** | • 4 Physical CPU Cores (x86_64)<br/>• 16 GB DDR4/DDR5 RAM<br/>• 40 GB OS Disk<br/>• 1x Dedicated 50+ GB SSD/NVMe<br/>• 1x 1 Gbps NIC | • 8+ Physical CPU Cores (x86_64)<br/>• 32 GB DDR4/DDR5 RAM<br/>• 100 GB OS Disk<br/>• 1x Dedicated 120+ GB NVMe SSD<br/>• 1x 10 Gbps NIC (or dual 1 Gbps) | Hosts synchronous storage replica, DiskPool 2, and serves as the destination target for VM live migration drills. |
-| **Worker Node 3 (Storage + Quorum)** | • 4 Physical CPU Cores (x86_64)<br/>• 16 GB DDR4/DDR5 RAM<br/>• 40 GB OS Disk<br/>• 1x Dedicated 50+ GB SSD/NVMe<br/>• 1x 1 Gbps NIC | • 8+ Physical CPU Cores (x86_64)<br/>• 32 GB DDR4/DDR5 RAM<br/>• 100 GB OS Disk<br/>• 1x Dedicated 120+ GB NVMe SSD<br/>• 1x 10 Gbps NIC (or dual 1 Gbps) | Hosts synchronous storage replica, DiskPool 3, providing the 3rd quorum tie-breaker during node failure simulations. |
+| **Node Count** | **4 Nodes** (1 Control Plane + 3 Workers) | **4 Nodes** (Dedicated physical servers) | 3-way synchronous replication ($N=3$), quorum tie-breaking, and cross-node VM live migration. |
+| **Control Plane Node** | • 2–4 CPU Cores (x86_64)<br/>• 4–8 GB RAM<br/>• 40–100 GB OS Disk<br/>• 1x 1 Gbps NIC | • 4 Physical CPU Cores<br/>• 8 GB RAM<br/>• 100 GB SSD (High write endurance)<br/>• 1x 1 Gbps / 10 Gbps NIC | Hosts Kubernetes API Server, etcd database, scheduler, controller-manager, and storage control plane agents. |
+| **Storage Worker Nodes<br/>(3 Nodes Required)** | • 6 Physical CPU Cores (x86_64)<br/>• 16 GB RAM (Constrained baseline)<br/>• 40 GB OS Disk<br/>• **1x Dedicated 50+ GB raw SSD/NVMe**<br/>• 1x 1 Gbps NIC | • 8–16 Physical CPU Cores (x86_64)<br/>• 32 GB RAM (Recommended)<br/>• 100 GB OS Disk<br/>• **1x Dedicated 120+ GB raw NVMe SSD**<br/>• 1x 10 Gbps NIC (or dedicated storage NIC) | Each worker dedicates 2 CPU cores to SPDK busy-polling, 2 GiB HugePages, a dedicated raw block device for storage pools, and hosts KubeVirt VMs. |
+| **Virtualization** | Intel VT-x or AMD-V enabled in BIOS | Hardware `/dev/kvm` accessible directly | Mandatory for hardware-accelerated KVM virtual machines in KubeVirt. |
+| **Operating System** | Fresh Ubuntu Server 24.04 LTS (or 22.04 LTS) | Clean install with Linux 6.8 LTS kernel | Upstream Kubernetes and Mayastor driver compatibility (`nvme-tcp`). |
+| **Administrative Access** | Full `sudo` / root permissions | Sudo access with SSH key authentication | Needed for kernel module loading, HugePage reservation, and disk formatting. |
+| **Networking** | Common Layer-2 subnet, Static IPs | 1 Gbps or 10 Gbps switched LAN | Prevents cluster certificate expiration and ensures low-latency NVMe-oF transport. |
 
 ---
 
-### 1.2 Storage Subsystem Requirements (OpenEBS Mayastor Prerequisites)
-Mayastor executes a user-space I/O pipeline using the Storage Performance Development Kit (SPDK). The following prerequisites must be supported by the worker nodes:
-1. **CPU Instruction Set:** x86_64 processor supporting `SSE4.2` (and optionally `AVX2`).
-2. **Dedicated Raw Block Device:** Each worker node requires at least one dedicated physical block device (e.g., `/dev/sdb`, `/dev/nvme1n1`) that is:
-   - Completely unpartitioned and unformatted (no existing filesystem or LVM metadata).
-   - Dedicated exclusively to the Mayastor `DiskPool`.
-3. **HugePages Allocation:** Host Linux kernel must allow reserving **1024 pages of 2 MiB HugePages** (total 2048 MiB = 2 GiB) per worker node at boot time:
-   ```bash
-   echo 1024 | sudo tee /sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages
-   ```
-4. **Kernel Modules:** The host operating system kernel must support and allow loading:
-   - `nvme-tcp` (NVMe over Fabrics TCP initiator module).
-   - `uio` or `vfio_pci` (User-space I/O drivers for SPDK).
+## 3. Infrastructure Discovery Questionnaire
+
+*Please complete or check the relevant fields below to help us align the deployment strategy with available laboratory resources.*
+
+### Part A: General Information
+- **Department / Laboratory:** __________________________________________________
+- **Lab In-Charge / System Administrator Name:** _________________________________
+- **Contact Email / Extension:** _________________________________________________
+- **Date of Inquiry:** __________________________________________________________
 
 ---
 
-### 1.3 Virtualization Subsystem Requirements (KubeVirt Prerequisites)
-KubeVirt schedules virtual machines inside Kubernetes pods using Linux KVM:
-1. **Hardware Virtualization Flag:** Processors on worker nodes must have virtualization extensions enabled in the BIOS/UEFI:
-   - Intel: `VT-x` (`vmx` flag in `/proc/cpuinfo`).
-   - AMD: `AMD-V` (`svm` flag in `/proc/cpuinfo`).
-2. **KVM Character Device:** `/dev/kvm` must be accessible with read/write permissions for container virtualization (`chmod 666 /dev/kvm`).
-3. **Nested Virtualization (If running inside college hypervisors e.g., Proxmox/ESXi):**
-   - If the servers provided are virtual machines rather than bare-metal hosts, the hypervisor must have **nested virtualization enabled** (`kvm_intel.nested=1` or `kvm_amd.nested=1`), and CPU type must be passed through as `host-passthrough`.
+### Part B: Machine Allocation & Hardware Topology
+1. **What type of hardware can be allocated for this project?**
+   - [ ] Dedicated physical bare-metal servers
+   - [ ] Virtual machines provisioned on a campus hypervisor (e.g., Proxmox VE, VMware ESXi, OpenStack)
+   - [ ] Existing lab desktop workstations with virtualization support
+   - [ ] Other: ______________________________________________________________
+
+2. **How many machines can be allocated exclusively for the project duration?**
+   - [ ] 4 Nodes (1 Control Plane + 3 Workers) — *Standard architecture*
+   - [ ] 3 Nodes (1 Combined Control/Worker + 2 Workers) — *Degraded fallback*
+   - [ ] Other count: ________
+
+3. **Hardware Specifications of Candidate Machines:**
+
+| Machine Role / Identifier | CPU Model & Cores | Total RAM (GB) | Primary OS Disk Size | Dedicated Raw SSD/NVMe Size | NIC Count & Speed |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Machine 1 (Control Plane)** | | | | *(N/A)* | |
+| **Machine 2 (Worker 1)** | | | | | |
+| **Machine 3 (Worker 2)** | | | | | |
+| **Machine 4 (Worker 3)** | | | | | |
+
+4. **Dedicated Raw Storage Availability:**  
+   *Mayastor requires at least one dedicated physical block device per worker that can be completely wiped and formatted for storage pools.*
+   - [ ] Yes — A separate secondary SSD or NVMe drive is available on each worker.
+   - [ ] Yes — A dedicated unformatted partition can be carved out on a single drive.
+   - [ ] Unsure — Needs inspection by the project team.
+   - [ ] No — Only single OS drive available with full disk utilization.
 
 ---
 
-### 1.4 Network & Interconnect Specifications
-1. **Network Fabric:** Low-latency switched Ethernet interconnecting all 4 nodes on the same Layer-2 subnet.
-2. **Bandwidth:** Minimum 1 Gbps full-duplex; 10 Gbps preferred for high-throughput FIO benchmarking.
-3. **MTU:** Standard MTU 1500 supported; capability to enable MTU 9000 (Jumbo Frames) on the storage/migration VLAN is highly desirable.
-4. **IP Addressing:** Static IPv4 addresses assigned to all nodes on the lab network (or static DHCP leases) to prevent Kubernetes cluster certificate invalidation across reboots.
-5. **Firewall Access:** Ability to open internal cluster ports (Kubernetes API 6443, etcd 2379–2380, Kubelet 10250, Mayastor gRPC 10124, Mayastor NVMe-oF 8420, KubeVirt migration 49152–49215).
+### Part C: BIOS, Kernel & Virtualization Capabilities
+5. **Hardware Virtualization Support:**
+   - [ ] Intel VT-x or AMD-V is enabled in BIOS/UEFI on all candidate machines.
+   - [ ] Virtualization is currently disabled, but can be enabled in BIOS/UEFI upon request.
+   - [ ] (If Virtual Machines) CPU pass-through (`host` model) with nested virtualization (`/dev/kvm`) is enabled.
+   - [ ] Virtualization extensions are restricted or unavailable.
+
+6. **Operating System & Kernel Prerequisites:**
+   - [ ] Ubuntu Server 24.04 LTS (or 22.04 LTS) can be cleanly installed on the machines.
+   - [ ] Existing Linux installation must be retained: Distro: __________________ Kernel: ________
+   - [ ] The Linux kernel allows loading the `nvme-tcp` initiator module.
+   - [ ] Host configuration permits reserving 2 GiB of 2 MiB HugePages per worker at boot.
 
 ---
 
-## 2. Infrastructure Discovery Questionnaire
+### Part D: Network Connectivity & Security
+7. **IP Addressing & Subnet Topology:**
+   - [ ] Static private IPv4 addresses can be assigned to all 4 nodes on the same subnet.
+   - [ ] DHCP is used, but static MAC-IP reservations can be configured on the router/switch.
+   - [ ] Dynamic DHCP only (IP addresses may change upon reboot).
+   - [ ] Machines reside on different subnets or VLANs.
 
-*Please complete the following technical inquiry to assist in configuring the deployment environment.*
-
-### Section A: Hardware Availability & Allocation
-1. **Are physical bare-metal Linux servers available for this project, or will virtual machines provisioned on a campus hypervisor (e.g., VMware vSphere, Proxmox VE, OpenStack) be provided?**  
-   `[ ] Physical Bare-Metal Servers`  
-   `[ ] Hypervisor-Hosted Virtual Machines`  
-   `[ ] Combination / Other:` _________________________
-
-2. **How many independent machines can be allocated exclusively for the duration of this project?**  
-   `[ ] 4 Nodes (1 Control Plane + 3 Workers) [RECOMMENDED]`  
-   `[ ] 3 Nodes (1 Combined Control/Worker + 2 Workers)`  
-   `[ ] Less than 3 Nodes (Specify count):` _______
-
-3. **What are the CPU and RAM specifications per machine?**  
-   - Control Plane Node: ______ CPU Cores | ______ GB RAM  
-   - Worker Node 1: ______ CPU Cores | ______ GB RAM  
-   - Worker Node 2: ______ CPU Cores | ______ GB RAM  
-   - Worker Node 3: ______ CPU Cores | ______ GB RAM  
-
-4. **Can dedicated secondary block devices (SATA SSD, SAS SSD, or NVMe) be provided on each worker node for raw storage pool allocation?**  
-   `[ ] Yes — Dedicated raw SSD/NVMe available per worker (Capacity: _______ GB per disk)`  
-   `[ ] No — Only single OS drive available (Unpartitioned space can be carved out)`  
-   `[ ] Unsure / Need assistance inspecting hardware`
+8. **Inter-Node Communication & Firewalls:**
+   - [ ] Unrestricted inter-node communication is permitted across the designated cluster IP range.
+   - [ ] Institutional/host firewall rules apply. (A list of 10 inter-node ports will be submitted for whitelisting).
+   - [ ] Is an isolated storage switch or secondary network interface available for NVMe traffic? `[ ] Yes  [ ] No`
 
 ---
 
-### Section B: Operating System & Administrative Permissions
-5. **Can Ubuntu Server 22.04 LTS or 24.04 LTS be installed on these machines?**  
-   `[ ] Yes — Fresh Ubuntu Server can be installed`  
-   `[ ] No — Existing Linux distribution installed (Specify distro & version):` _________________
+### Part E: Administrative Access & Operational Logistics
+9. **Administrative Permissions:**
+   - [ ] Full root access or passwordless `sudo` privileges will be provided to the project team.
+   - [ ] Limited `sudo` privileges can be granted for specific administrative commands.
+   - [ ] No root/sudo access permitted. (Note: Root access is mandatory for cluster bootstrap and storage setup).
 
-6. **Will root privileges or passwordless `sudo` access be granted to the student project team on all nodes?**  
-   *(Note: Root/sudo access is mandatory for loading kernel modules, installing containerd, configuring HugePages, and bootstrapping Kubernetes via kubeadm).*  
-   `[ ] Yes — Full sudo/root access is available`  
-   `[ ] Restricted sudo access (Specify restrictions):` _________________________  
-   `[ ] No sudo access available`
+10. **Remote Access & Operating Hours:**
+    - [ ] SSH access is available from campus Wi-Fi or VPN.
+    - [ ] Physical laboratory access only during official college working hours.
+    - [ ] Remote SSH access via jump host / port forwarding is available.
+    - Lab operating hours / physical access schedule: ______________________________
 
-7. **Is hardware virtualization (Intel VT-x / AMD-V) enabled in the BIOS/UEFI on all worker machines? (If VMs, is CPU passed through as `host` with nested virtualization enabled?)**  
-   `[ ] Yes — Hardware virtualization / /dev/kvm is available`  
-   `[ ] Can be enabled upon request`  
-   `[ ] No / Not permitted by lab policy`
-
----
-
-### Section C: Networking, Access & Operational Logistics
-8. **Are all candidate nodes connected via a dedicated local switch, and can static local IP addresses be assigned?**  
-   `[ ] Yes — Static private IPv4 addresses available on the same subnet`  
-   `[ ] Dynamic DHCP only (with long lease time)`  
-   `[ ] Nodes are on different subnets / routing restrictions apply`
-
-9. **Can internal node-to-node ports be opened without institutional firewall filtering?**  
-   `[ ] Yes — Unrestricted communication permitted between designated cluster IPs`  
-   `[ ] Internal firewall rules apply (Port opening requests must be submitted)`
-
-10. **What is the remote access policy for these machines?**  
-    `[ ] SSH access available from campus Wi-Fi / VPN`  
-    `[ ] Physical in-lab access only during lab operating hours`  
-    `[ ] Remote SSH via jump-host / port-forwarding available`
-
-11. **What is the available reservation window for this hardware?**  
-    `Reservation Start Date:` _______________  
-    `Reservation End Date:` _______________  
-    `Department Coordinator / Lab In-Charge Name:` _________________________
+11. **Reservation Duration & Stability:**
+    - Anticipated project testing window: **From:** _______________ **To:** _______________
+    - Can the machines remain continuously powered on and reserved without interruption during benchmark runs? `[ ] Yes  [ ] No`
+    - Are scheduled lab maintenance reboots performed on specific days/times? ___________________
 
 ---
 
-## 3. Alternative Fallback Matrix (If Preferred Hardware Is Unavailable)
+## 4. Fallback Architecture Matrix (If Ideal Hardware Is Unavailable)
 
-If the college laboratory cannot provide the full 4-node bare-metal environment, the following degraded operational tiers are proposed:
+If laboratory constraints prevent allocating 4 dedicated physical servers, we can accommodate the following structured fallbacks:
 
-| Fallback Tier | Hardware Topology | Compromised Features | Project Feasibility Assessment |
-| :--- | :--- | :--- | :--- |
-| **Tier 1: Degraded 3-Node Topology** | 1 Combined Control Plane/Worker + 2 Dedicated Storage Workers | No dedicated control plane isolation; control plane untainted. | **FEASIBLE:** Supports 2-way replication ($N=2$) and live migration between Node 1 and Node 2. Tolerates 0 worker node failures during migration. |
-| **Tier 2: Proxmox / ESXi Nested VMs** | 4 VMs created on a single large lab server (e.g., 64 GB RAM Xeon workstation) | Virtualized storage and network latency; nested virtualization overhead. | **FEASIBLE FOR FUNCTIONALITY:** Allows testing all CRDs, live migration, and hot-plugging; benchmark IOPS will reflect hypervisor overhead rather than bare-metal NVMe speed. |
-| **Tier 3: 2-Node Cluster** | 1 Control Plane + 1 Storage Worker | No multi-node quorum; no cross-node live migration possible. | **UNACCEPTABLE FOR FINAL SUBMISSION:** Live migration and distributed replication cannot be demonstrated. |
+| Priority | Operational Tier | Proposed Hardware Topology | Feasibility & Limitations |
+| :---: | :--- | :--- | :--- |
+| **1** | **Degraded 3-Node Cluster** | 1 Combined Control Plane/Worker + 2 Storage Workers | **Feasible for Functionality:** Supports 2-way replication ($N=2$) and VM live migration. Zero tolerance for worker node loss during active migration. |
+| **2** | **College Lab Desktops** | 4 physical lab workstations running Ubuntu Server | **Feasible for Benchmarking:** Suitable if workstations possess $\ge 6$ CPU cores, $\ge 16$ GB RAM, and secondary SSDs. |
+| **3** | **Nested VMs on Single High-Spec Server** | 4 Linux VMs hosted on a single large lab server ($\ge 64$ GB RAM, 16+ cores) | **Feasible for Protocol Validation:** Allows full validation of Kubernetes, KubeVirt, live migration, and hot-plugging. Performance benchmarks will reflect hypervisor virtualization tax. |
+| **4** | **2-Node Minimal Cluster** | 1 Control Plane + 1 Worker | **Unacceptable for Final Delivery:** Cannot demonstrate 3-way replication or cross-node live migration. |
+
+---
+
+## 5. Submission & Next Steps
+
+Once this questionnaire is completed, the student engineering team will:
+1. Conduct non-destructive pre-flight verification on the allocated machines (checking `/dev/kvm`, HugePages, and `nvme-tcp`).
+2. Submit specific firewall port whitelisting requests based on the verified cluster IPs.
+3. Schedule cluster provisioning without disrupting general laboratory operations.
+
+**Student Project Team Lead:** Swapnil Sharma (Project ID: SWFW_5S_08)  
+**Program:** Zoho SETU — College Student Project Program  
+**Repository:** `https://github.com/Swapnil220705/k8s-high-performance-storage`
