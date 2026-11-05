@@ -5,8 +5,8 @@
 **Program:** Zoho SETU — College Student Project Program  
 **Active Branch:** `main`  
 **Current Phase:** Phase 1 — Infrastructure Discovery & Technical Feasibility  
-**Current Chunk:** Chunk 1 — Infrastructure Discovery & Technical Feasibility  
-**Chunk 1 Status:** COMPLETED (Ready for User Review & Approval)  
+**Current Chunk:** Chunk 1.8 — Technical Research Corrections  
+**Chunk 1.8 Status:** COMPLETED (Ready for User Review & Approval)  
 **Overall Completion:** 2 / 12 Chunks Completed (Foundation & Feasibility Phases)  
 
 ---
@@ -23,6 +23,7 @@
 | :---: | :--- | :---: | :---: | :---: |
 | **0** | **Project Foundation & Governance** | 🟢 **COMPLETED** | Chunk 0 | Documentation, Git & Structural Verification |
 | **1** | **Infrastructure Discovery & Technical Feasibility** | 🟢 **COMPLETED** | Chunk 1 | Local WMI/CIM Audit, Literature & Matrix Verification |
+| **1.8**| **Technical Research Corrections** | 🟢 **COMPLETED** | Chunk 1.8 | Upstream Lifecycle Reassessment, Native RWX & Port Audit |
 | **2** | Target Infrastructure Preparation & Kubernetes Cluster Bootstrap | ⚪ NOT STARTED | Chunk 2 | Pending User Authorization & Server Allocation |
 | **3** | OpenEBS Mayastor Storage Engine Deployment | ⚪ NOT STARTED | Chunk 3 | Pending Authorization |
 | **4** | Storage Pools, Replication & Volume Provisioning | ⚪ NOT STARTED | Chunk 4 | Pending Authorization |
@@ -56,7 +57,11 @@
 - [x] Network topology & verified firewall port matrix (`docs/network-and-virtualization-requirements.md`).
 - [x] Infrastructure deployment options comparison (`docs/deployment-options.md`).
 - [x] Final target deployment architecture proposal (`docs/final-deployment-proposal.md`).
-- [x] Added ADR-008 (Dual-Tier Storage Strategy) and ADR-009 (Software Stack Baseline) to `DECISIONS.md`.
+- [x] Added ADR-008 (Dual-Tier Storage Strategy), superseded ADR-009, and adopted ADR-010 (Supported Modern Software Stack) in `DECISIONS.md`.
+- [x] Corrected software version baseline to active Kubernetes 1.35.x (fallback 1.34.x), KubeVirt v1.8, and OpenEBS 4.6+ (`docs/compatibility-matrix.md`).
+- [x] Documented native Mayastor RWX block volume support and decoupled storage replication from etcd quorum (`docs/storage-architecture-analysis.md`).
+- [x] Validated 20-port firewall matrix and detailed worker node resource budget (`docs/network-and-virtualization-requirements.md`).
+- [x] Updated final target deployment proposal (`docs/final-deployment-proposal.md`) and deployment options (`docs/deployment-options.md`).
 
 ### 2.2 Verified Infrastructure Features
 - [x] **Local Hardware Capability:** Verified AMD Ryzen 5 7535HS (6C/12T), AMD-V enabled, 8 GB DDR5 RAM (~750 MB free), 1x 512 GB NVMe (~17 GB free on C:), WSL2 Ubuntu installed.
@@ -111,14 +116,15 @@
 ## 5. Architectural Decision Status Overview
 
 - **ADR-001:** Hybrid local development and remote deployment $\rightarrow$ `PROPOSED`
-- **ADR-002:** Three independent storage-capable worker nodes $\rightarrow$ `PROPOSED`
-- **ADR-003:** OpenEBS Mayastor as the replicated storage engine $\rightarrow$ `PROPOSED`
-- **ADR-004:** NFS-backed RWX storage proposal for KubeVirt live migration $\rightarrow$ `PROPOSED`
+- **ADR-002:** Three independent storage-capable worker nodes $\rightarrow$ `AMENDED` (Storage replication decoupled from etcd quorum)
+- **ADR-003:** OpenEBS Mayastor as the replicated storage engine $\rightarrow$ `AMENDED` (OpenEBS 4.6+ / Mayastor v2.11+ for native RWX)
+- **ADR-004:** NFS-backed RWX storage layer for KubeVirt live migration $\rightarrow$ `AMENDED` (Retained as conservative fallback)
 - **ADR-005:** Free college infrastructure as preferred deployment strategy $\rightarrow$ `PROPOSED`
 - **ADR-006:** Multiple meaningful Conventional Commits per project chunk $\rightarrow$ `PROPOSED`
 - **ADR-007:** Antigravity-assisted, chunk-based development $\rightarrow$ `PROPOSED`
-- **ADR-008:** Dual-Tier storage architecture for high-performance block and live migration $\rightarrow$ `PROPOSED`
-- **ADR-009:** Target software stack baseline specification (Ubuntu 22.04 LTS, K8s 1.28, Mayastor 2.5, KubeVirt 1.1) $\rightarrow$ `PROPOSED`
+- **ADR-008:** Dual-Tier storage architecture for high-performance block and live migration $\rightarrow$ `AMENDED` (Comparative 3-tier strategy)
+- **ADR-009:** Target software stack baseline specification (K8s 1.28 / Ubuntu 22.04) $\rightarrow$ `SUPERSEDED` (Rejected due to EOL)
+- **ADR-010:** Supported modern software stack baseline (Ubuntu 24.04, K8s 1.35.x/1.34.x, OpenEBS 4.6+, KubeVirt 1.8) $\rightarrow$ `PROPOSED`
 
 ---
 
@@ -132,6 +138,11 @@
 - **2026-11-04:** Executed Subchunk 1.5: Researched network traffic flows, 15 firewall ports, and virtualization taxonomy. Authored `docs/network-and-virtualization-requirements.md`. Committed as `docs: add network and virtualization requirements` (`8ed066a`).
 - **2026-11-04:** Executed Subchunk 1.6: Evaluated 5 deployment options and formulated the final deployment proposal. Authored `docs/deployment-options.md` and `docs/final-deployment-proposal.md`. Committed as `docs: finalize deployment feasibility proposal` (`1872bcb`).
 - **2026-11-04:** Synchronized project state, decisions register (ADR-008 & ADR-009), architecture specification, research log, and README documentation.
+- **2026-11-05:** Implemented Chunk 1.8 Technical Research Corrections:
+  - Reassessed software lifecycles; rejected EOL Kubernetes 1.28/1.29; selected supported Kubernetes 1.35.x (fallback 1.34.x), KubeVirt v1.8, and OpenEBS 4.6+ (`c457aac`).
+  - Investigated native Mayastor RWX block volumes (OpenEBS 4.6+) and decoupled storage replication from etcd quorum (`aea2292`).
+  - Validated 20-port firewall matrix and detailed worker node resource budget (`9c9b187`).
+  - Finalized technical feasibility decisions, updating ADR-002, ADR-003, ADR-004, ADR-008, superseding ADR-009, and adopting ADR-010.
 
 ---
 

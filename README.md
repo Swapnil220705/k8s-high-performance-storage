@@ -48,10 +48,10 @@ Enterprise workloads demanding virtualization within Kubernetes require storage 
 | **Cluster Orchestration** | Kubernetes (`kubeadm`) | v1.28+ (TBD during validation) | Core container orchestration and resource scheduling |
 | **Container Runtime** | `containerd` | v1.7+ | OCI-compliant container runtime interfacing with Kubelet via CRI |
 | **Cluster Networking** | Calico / Flannel (CNI) | Latest stable | Pod-to-Pod and Node-to-Pod networking fabric |
-| **Storage Engine** | OpenEBS Mayastor | v2.5+ | SPDK-based high-performance distributed block storage engine |
+| **Storage Engine** | OpenEBS Mayastor | OpenEBS v4.6+ (Mayastor v2.11+) | SPDK-based high-performance distributed block storage engine |
 | **I/O Acceleration** | SPDK (User Space) | Integrated with Mayastor | Polled-mode NVMe driver, zero-copy user-space I/O pipeline |
 | **Storage Protocol** | NVMe-oF (TCP) | NVMe over Fabrics | High-throughput, low-latency block transport across cluster nodes |
-| **Virtualization Layer** | KubeVirt | v1.1+ | Kubernetes CRD controller managing QEMU/KVM VM pods |
+| **Virtualization Layer** | KubeVirt | v1.8+ | Kubernetes CRD controller managing QEMU/KVM VM pods |
 | **Hypervisor / Emulator** | QEMU / KVM | Linux KVM module | Hardware-assisted virtualization within VM launcher pods |
 | **Shared Storage Gateway** | NFS Server / RWX Provisioner | NFSv4 | Evaluation mechanism for RWX live-migration shared storage |
 | **Benchmarking Suite** | Flexible I/O Tester (`fio`) | v3.30+ | Multi-pattern synthetic I/O workload generation & measurement |
@@ -227,7 +227,7 @@ Development follows a strict **hybrid infrastructure model**:
 ### Infrastructure Discovery & Feasibility Reports (Chunk 1 Deliverables)
 - [Local Infrastructure Inventory (docs/infrastructure-inventory.md)](docs/infrastructure-inventory.md): Hardware detection, memory limitations, and WSL2 assessment on the dev laptop.
 - [College Infrastructure Questionnaire (docs/college-infrastructure-questionnaire.md)](docs/college-infrastructure-questionnaire.md): Formal inquiry and hardware sizing for lab administrators.
-- [Software Version Compatibility Matrix (docs/compatibility-matrix.md)](docs/compatibility-matrix.md): In-depth research establishing Candidate Stack A (Ubuntu 22.04 LTS, K8s 1.28, Mayastor 2.5.0, KubeVirt 1.1.1).
+- [Software Version Compatibility Matrix (docs/compatibility-matrix.md)](docs/compatibility-matrix.md): Lifecycle research establishing supported modern baseline (Ubuntu 24.04 LTS, K8s 1.35.x, OpenEBS 4.6+, KubeVirt 1.8.x).
 - [Storage Architecture Analysis (docs/storage-architecture-analysis.md)](docs/storage-architecture-analysis.md): RWO vs. RWX evaluation, Mayastor SPDK volume pipeline, and dual-tier storage strategy.
 - [Network & Virtualization Requirements (docs/network-and-virtualization-requirements.md)](docs/network-and-virtualization-requirements.md): 15 verified ports, network topology, and hardware KVM pass-through requirements.
 - [Deployment Options Evaluation (docs/deployment-options.md)](docs/deployment-options.md): Comparative evaluation of physical servers, lab PCs, hypervisor nested VMs, and cloud options.

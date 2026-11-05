@@ -23,7 +23,8 @@
 - [ADR-006: Multiple Meaningful Conventional Commits per Project Chunk](#adr-006-multiple-meaningful-conventional-commits-per-project-chunk)
 - [ADR-007: Antigravity-Assisted Chunk-Based Development Methodology](#adr-007-antigravity-assisted-chunk-based-development-methodology)
 - [ADR-008: Dual-Tier Storage Architecture for High-Performance Block and Live Migration](#adr-008-dual-tier-storage-architecture-for-high-performance-block-and-live-migration)
-- [ADR-009: Target Software Stack Baseline Specification](#adr-009-target-software-stack-baseline-specification)
+- [ADR-009: Target Software Stack Baseline Specification (SUPERSEDED)](#adr-009-target-software-stack-baseline-specification)
+- [ADR-010: Supported Modern Software Stack Baseline (Ubuntu 24.04 LTS, Kubernetes 1.35.x/1.34.x, OpenEBS 4.6.x, KubeVirt 1.8.x)](#adr-010-supported-modern-software-stack-baseline)
 
 ---
 
@@ -51,10 +52,10 @@
 
 ## ADR-002: Three Independent Storage-Capable Worker Nodes
 
-- **Status:** PROPOSED (Pending Target Hardware Confirmation)
-- **Date:** 2026-11-04
+- **Status:** PROPOSED / AMENDED (Clarified in Chunk 1.8)
+- **Date:** 2026-11-04 (Amended 2026-11-05)
 - **Context:**  
-  Distributed storage engines and KubeVirt live migration require genuine multi-node failure domains to validate quorum, synchronous replication, and cross-node VM live migration.
+  Distributed storage engines and KubeVirt live migration require genuine multi-node failure domains. Note that storage data replication (Mayastor) is an entirely independent layer from Kubernetes control-plane consensus (etcd Raft quorum).
 - **Options Considered:**
   1. *Single-Node Development Cluster:* Run a single worker node with virtual loopback devices.
   2. *Two-Node Worker Cluster:* Run two worker nodes with 2-way replication.
@@ -62,56 +63,56 @@
 - **Decision:**  
   Adopt Option 3: Standard 3-worker topology with dedicated block devices on each worker.
 - **Reasoning:**  
-  A 3-node storage pool allows true 3-way synchronous replication ($N=3$), provides a tie-breaking quorum during network partitions, and enables live migration from Node A to Node B while maintaining an active third replica on Node C.
+  A 3-node storage pool allows 3-way synchronous volume replication ($N=3$), tolerating up to 2 sequential storage replica failures while keeping the volume readable/writable. It enables cross-node VM live migration from Node A to Node B while preserving an active third replica on Node C. (Control-plane etcd quorum resides separately on control plane nodes).
 - **Consequences:**  
-  - *Positive:* Meets production distributed systems standards; enables complete failure drill matrix.
+  - *Positive:* Meets production distributed storage standards; enables complete failure drill matrix.
   - *Negative:* Increases target hardware requirement (minimum 4 physical or virtual servers).
 - **Validation Evidence:**  
-  Pending validation during Chunk 2 and Chunk 4.
+  Pending validation during Chunk 2 and Chunk 4; documented in `docs/storage-architecture-analysis.md`.
 
 ---
 
 ## ADR-003: OpenEBS Mayastor as the Distributed Replicated Storage Engine
 
-- **Status:** PROPOSED (Pending Deployment & Benchmarking)
-- **Date:** 2026-11-04
+- **Status:** PROPOSED / AMENDED (Updated in Chunk 1.8)
+- **Date:** 2026-11-04 (Amended 2026-11-05)
 - **Context:**  
   KubeVirt virtual machines running database and high-throughput workloads require sub-millisecond block storage access. Traditional distributed storage engines (e.g., Ceph RBD, Longhorn, OpenEBS cStor) route I/O through the Linux kernel block layer and VFS, introducing context switching and interrupt processing overheads.
 - **Options Considered:**
   1. *Longhorn:* Feature-rich and simple, but operates in kernel space via iSCSI/NVMf, yielding moderate latency under high IOPS.
   2. *Rook-Ceph:* Robust and mature, but heavy resource footprint (demanding significant CPU and RAM per OSD) and complex operational surface.
-  3. *OpenEBS Mayastor:* Built on SPDK (C/Rust), leverages user-space polling-mode drivers and NVMe-oF (TCP), delivering near-bare-metal I/O performance.
+  3. *OpenEBS Mayastor (OpenEBS 4.6.x / Mayastor v2.11+):* Built on SPDK (C/Rust), leverages user-space polling-mode drivers, NVMe-oF (TCP), and introduces native experimental RWX block volume support for KubeVirt live migration.
 - **Decision:**  
-  Adopt Option 3: OpenEBS Mayastor as the primary high-performance block storage engine.
+  Adopt Option 3: OpenEBS Mayastor (targeting OpenEBS v4.6.x / Mayastor v2.11+) as the primary storage engine.
 - **Reasoning:**  
-  Directly aligns with the project's core problem statement of maximizing NVMe performance in cloud-native virtualization.
+  Directly aligns with the project's core problem statement of maximizing NVMe performance in cloud-native virtualization and allows evaluating native RWX block live migration without an intermediate NFS layer.
 - **Consequences:**  
-  - *Positive:* High IOPS, sub-millisecond latency, lockless user-space architecture.
-  - *Negative:* Requires dedicated CPU cores for SPDK polling threads, pre-allocated 2 MiB HugePages, and specific kernel modules (`nvme-tcp`).
+  - *Positive:* High IOPS, sub-millisecond latency, lockless user-space architecture, native RWX block capabilities.
+  - *Negative:* Requires dedicated CPU cores for SPDK polling threads, pre-allocated 2 MiB HugePages (2 GiB locked out per storage node), and specific kernel modules (`nvme-tcp`).
 - **Validation Evidence:**  
-  Pending benchmark results in Chunk 8.
+  Documented in `docs/storage-architecture-analysis.md`; pending benchmark results in Chunk 8.
 
 ---
 
 ## ADR-004: NFS-Backed RWX Storage Layer for KubeVirt VM Live Migration
 
-- **Status:** PROPOSED (Pending Empirical Feasibility Study)
-- **Date:** 2026-11-04
+- **Status:** PROPOSED / AMENDED (Retained as Fallback Baseline in Chunk 1.8)
+- **Date:** 2026-11-04 (Amended 2026-11-05)
 - **Context:**  
-  KubeVirt live migration requires persistent volumes to be mounted simultaneously on both source and destination `virt-launcher` pods during memory streaming, requiring `ReadWriteMany` (RWX) access mode. OpenEBS Mayastor natively provisions block volumes as `ReadWriteOnce` (RWO) NVMe targets.
+  KubeVirt live migration requires shared access during memory streaming. While native Mayastor RWX block volumes are now available (OpenEBS 4.6+), they carry an experimental designation. An NFS gateway backed by a Mayastor RWO volume provides a proven, standards-compliant POSIX fallback.
 - **Options Considered:**
-  1. *Direct Mayastor RWO with Storage Migration:* Migrate both VM memory and disk blocks during migration. (Extremely slow and disruptive).
-  2. *NFS Gateway over Mayastor RWO:* Deploy an NFS server instance backed by a Mayastor RWO volume, exporting an RWX filesystem to KubeVirt VMs.
-  3. *Experimental Dual-Initiator Mayastor Nexus:* Attempt multi-attach at the NVMe-oF layer.
+  1. *Rely Solely on Experimental Native RWX Block:* High performance, but carries risk of unhandled edge cases during network partitions.
+  2. *Rely Solely on NFS Gateway:* Proven and safe, but masks NVMe SPDK performance benefits behind NFS RPC translation.
+  3. *Comparative Dual-Path Strategy:* Implement Native Mayastor RWX Block as the primary experimental target and deploy the NFS Gateway as the conservative fallback baseline.
 - **Decision:**  
-  Adopt Option 2: Deploy an NFS-backed shared storage gateway layer backed by Mayastor high-performance block storage for live-migration workloads, while comparing its performance against raw Mayastor RWO block volumes.
+  Adopt Option 3: Retain the NFS-backed shared storage gateway as the comparative baseline and conservative fallback.
 - **Reasoning:**  
-  Provides a stable, standards-compliant RWX filesystem required by KubeVirt live migration without risking filesystem corruption.
+  Enables measuring the exact performance tax of NFS translation against direct NVMe block I/O, while guaranteeing a stable live-migration demo if native RWX exhibits failure drill anomalies.
 - **Consequences:**  
-  - *Positive:* Enables zero-downtime KubeVirt live migration; provides a direct baseline for performance trade-off analysis (RWO vs RWX).
-  - *Negative:* Introduces an NFS layer overhead (protocol translation, cache coherency) and a potential single point of failure in the gateway pod.
+  - *Positive:* Safe fallback; enables rigorous scientific comparison of RWO vs Native RWX Block vs NFS RWX.
+  - *Negative:* NFS server pod represents a temporary single point of failure (SPOF) if its host node crashes.
 - **Validation Evidence:**  
-  Pending live migration testing in Chunk 6 and comparative benchmarking in Chunk 8.
+  Documented in `docs/storage-architecture-analysis.md`; to be tested in Chunks 6 and 8.
 
 ---
 
@@ -182,41 +183,64 @@
 
 ## ADR-008: Dual-Tier Storage Architecture for High-Performance Block and Live Migration
 
-- **Status:** PROPOSED (Evaluated in Chunk 1)
-- **Date:** 2026-11-04
+- **Status:** PROPOSED / AMENDED (Updated in Chunk 1.8)
+- **Date:** 2026-11-04 (Amended 2026-11-05)
 - **Context:**  
-  KubeVirt live migration requires `ReadWriteMany` (RWX) shared storage so both source and destination `virt-launcher` pods can access the disk during RAM streaming. OpenEBS Mayastor natively provisions high-performance NVMe volumes in `ReadWriteOnce` (RWO) block mode. Native Mayastor RWX block volumes are not production-ready in Mayastor v2.5/v2.6.
+  The project requires evaluating both maximum NVMe throughput (benchmarking) and virtual machine live migration. With the discovery of native Mayastor RWX block volume support in OpenEBS 4.6+, the live-migration tier can now be evaluated via direct block multi-attach as well as via the NFS gateway.
 - **Options Considered:**
-  1. *Solely Direct RWO Block:* Maximum NVMe performance, but zero live-migration capability.
-  2. *Solely NFS-Backed RWX Storage:* Enables live migration, but masks raw NVMe throughput behind NFS protocol translation.
-  3. *Dual-Tier Storage Strategy:* Deploy direct Mayastor RWO block volumes for I/O-intensive benchmarking VMs and deploy an NFS gateway over a Mayastor RWO volume for live-migratable VMs.
+  1. *Direct RWO Block Only:* High performance, but live migration disabled.
+  2. *NFS Gateway Only:* Live migration enabled, but lower IOPS.
+  3. *Three-Tier Comparative Strategy:*
+     - Tier 1: Direct Mayastor RWO Block (Control Group: maximum NVMe performance).
+     - Tier 2: Native Mayastor RWX Block (Experimental Primary: live migration over raw NVMe).
+     - Tier 3: NFS-Backed RWX Filesystem (Conservative Fallback: live migration over NFS).
 - **Decision:**  
-  Adopt Option 3: Dual-Tier Storage Strategy.
+  Adopt Option 3: Three-Tier Comparative Strategy.
 - **Reasoning:**  
-  Permits evaluating both extremes: pure NVMe wire speeds via SPDK for static VMs, and zero-downtime live migration over RWX shared storage for elastic VMs.
+  Provides the richest possible scientific and engineering comparison for the student project evaluation.
 - **Consequences:**  
-  - *Positive:* Validates all required project deliverables without architectural compromise.
-  - *Negative:* Increases configuration complexity; NFS gateway acts as a single point of failure for live-migratable VMs.
+  - *Positive:* Delivers comprehensive benchmarking data across all three cloud-native storage patterns.
+  - *Negative:* Requires managing test PVCs across both block and filesystem modes.
 - **Validation Evidence:**  
-  Documented in `docs/storage-architecture-analysis.md`; to be empirically measured in Chunks 6 and 8.
+  Detailed in `docs/storage-architecture-analysis.md`.
 
 ---
 
-## ADR-009: Target Software Stack Baseline Specification
+## ADR-009: Target Software Stack Baseline Specification (SUPERSEDED)
 
-- **Status:** PROPOSED (Evaluated in Chunk 1)
-- **Date:** 2026-11-04
+- **Status:** SUPERSEDED BY ADR-010 (Rejected in Chunk 1.8 Reassessment)
+- **Date:** 2026-11-04 (Superseded 2026-11-05)
 - **Context:**  
-  Software version incompatibilities between Linux kernel versions, Kubernetes releases, containerd CRI changes, and Mayastor SPDK drivers are a primary failure mode in cloud-native storage projects.
+  The initial Chunk 1 proposal selected Kubernetes v1.28.8 on Ubuntu 22.04 LTS with Mayastor v2.5.0.
+- **Reason for Supersession:**  
+  In the current operational timeframe (November 2026), **Kubernetes 1.28 reached official End-of-Life on October 22, 2024**, and Kubernetes 1.29 is also EOL. Deploying EOL releases violates project standards by introducing unmaintained dependencies and security vulnerabilities.
+- **Superseded By:**  
+  [ADR-010: Supported Modern Software Stack Baseline](#adr-010-supported-modern-software-stack-baseline).
+
+---
+
+## ADR-010: Supported Modern Software Stack Baseline
+
+- **Status:** PROPOSED (Evaluated in Chunk 1.8)
+- **Date:** 2026-11-05
+- **Context:**  
+  The project requires a currently supported, technically defensible software stack in late 2026. The intersection between Kubernetes supported lifecycle, KubeVirt compatibility, OpenEBS Mayastor release testing, and Linux kernel drivers must be established without relying on EOL software or unvalidated bleeding-edge releases.
 - **Options Considered:**
-  1. *Bleeding Edge:* Latest versions of everything (Ubuntu 24.04, Linux 6.8, Kubernetes 1.31, containerd 2.0). High risk of unresolvable CRI/CSI breaking changes.
-  2. *Conservative Proven LTS Baseline:* Ubuntu Server 22.04 LTS (Kernel 5.15), Kubernetes v1.28.8, containerd v1.7.15, OpenEBS Mayastor v2.5.0, KubeVirt v1.1.1, Calico v3.27.3.
+  1. *Bleeding-Edge (Kubernetes 1.36 / 1.37):* Latest upstream releases; high risk of storage operator CSI driver failure due to Mayastor qualification lag.
+  2. *EOL Releases (Kubernetes 1.28 / 1.29):* Deprecated and unmaintained upstream; rejected.
+  3. *Supported Modern Intersection (Primary: Kubernetes v1.35.x, Fallback: v1.34.x):*
+     - Host OS: Ubuntu Server 24.04 LTS (Noble Numbat) with Linux Kernel 6.8 LTS.
+     - Kubernetes: v1.35.x (within active support through Feb 2027; fallback v1.34.x).
+     - Container Runtime: `containerd` v1.7.22 (LTS CRI v1).
+     - CNI: Calico v3.28+ (routed BGP).
+     - Storage Engine: OpenEBS v4.6.x (Mayastor v2.11+) supporting native RWX block volumes.
+     - Virtualization Engine: KubeVirt v1.8.x + CDI v1.61.x.
 - **Decision:**  
-  Adopt Option 2: The Conservative Proven LTS Baseline (Candidate Stack A).
+  Adopt Option 3: Primary target Kubernetes v1.35.x (with fallback to v1.34.x if storage qualification issues emerge during deployment).
 - **Reasoning:**  
-  Every component in this combination has documented, verified compatibility. Kernel 5.15 contains the required `nvme-tcp` and `/dev/kvm` drivers, and Mayastor v2.5 is fully validated on Kubernetes 1.28.
+  Aligns with upstream Kubernetes active support, officially tested by KubeVirt v1.8 (supporting `>=1.33 <1.36`), supported by OpenEBS 4.6+, and benefits from Linux 6.8 kernel NVMe-oF and KVM optimizations.
 - **Consequences:**  
-  - *Positive:* Maximum deployment predictability and reduced debugging overhead.
-  - *Negative:* Reaches upstream end-of-support earlier than modern v1.30+ releases.
+  - *Positive:* Technically defensible in 2026; zero EOL software; access to native RWX block volume features.
+  - *Negative:* Mayastor native RWX block volume remains experimental upstream.
 - **Validation Evidence:**  
-  Documented in `docs/compatibility-matrix.md`.
+  Documented in `docs/compatibility-matrix.md` and `docs/final-deployment-proposal.md`.

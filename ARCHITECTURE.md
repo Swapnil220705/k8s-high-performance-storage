@@ -94,18 +94,18 @@ The intended deployment separates cluster traffic into logical or physical plane
 
 ## 3. Kubernetes Orchestration Layer
 
-- **Cluster Deployment Engine:** `kubeadm` v1.28.8 providing standard, upstream-compliant Kubernetes lifecycle management.
-- **Target Software Baseline Specification (ADR-009):**
-  - **Host Operating System:** Ubuntu Server 22.04 LTS (Jammy Jellyfish).
-  - **Linux Kernel:** 5.15.0 LTS with in-tree `nvme-tcp` and `/dev/kvm`.
-  - **Kubernetes Version:** v1.28.8.
-  - **Container Runtime:** `containerd` v1.7.15 (systemd cgroup driver).
-  - **CNI Plugin:** Calico v3.27.3 (routed BGP without VXLAN overhead).
-  - **Storage Engine:** OpenEBS Mayastor v2.5.0.
-  - **Virtualization Engine:** KubeVirt v1.1.1 + CDI v1.58.1.
+- **Cluster Deployment Engine:** `kubeadm` v1.35.x (or v1.34.x fallback) providing standard, upstream-compliant Kubernetes lifecycle management.
+- **Target Software Baseline Specification (ADR-010):**
+  - **Host Operating System:** Ubuntu Server 24.04 LTS (Noble Numbat).
+  - **Linux Kernel:** 6.8.0 LTS with optimized in-tree `nvme-tcp` and `/dev/kvm`.
+  - **Kubernetes Version:** v1.35.x (Active support through Feb 2027; fallback v1.34.x).
+  - **Container Runtime:** `containerd` v1.7.22 (systemd cgroup driver).
+  - **CNI Plugin:** Calico v3.28+ (native routed BGP without VXLAN overhead).
+  - **Storage Engine:** OpenEBS v4.6.x (Mayastor v2.11+) with native experimental RWX block volume support.
+  - **Virtualization Engine:** KubeVirt v1.8.x + CDI v1.61.x.
 - **Node Topology:**
-  - **1 Dedicated Control Plane Node:** Hosts API server, `etcd`, controller manager, scheduler, and Mayastor control plane agents.
-  - **3 Dedicated Worker Nodes:** Labeled and configured for storage and virtualization workloads (`openebs.io/engine=mayastor`, `kubevirt.io/schedulable=true`), each with 2 GiB HugePages pre-allocated and dedicated NVMe/SSD raw block devices.
+  - **1 Dedicated Control Plane Node:** Hosts API server, `etcd` (Raft consensus), controller manager, scheduler, and Mayastor control plane agents.
+  - **3 Dedicated Worker Nodes:** Labeled and configured for storage and virtualization workloads (`openebs.io/engine=mayastor`, `kubevirt.io/schedulable=true`), each with 2 GiB HugePages pre-allocated and dedicated NVMe/SSD raw block devices. Minimum planning target: 16 GB RAM per worker (32 GB preferred).
 
 ---
 
@@ -208,25 +208,28 @@ flowchart LR
 ```
 
 ### 6.2 Proposed RWX Integration Strategies
-Mayastor volumes natively provide block devices with `ReadWriteOnce` (RWO) semantics: a single Nexus controller exposes an NVMe target to a single initiator node at a time. To enable KubeVirt live migration, two architectural pathways will be investigated:
+KubeVirt live migration requires concurrent volume access during memory streaming. To evaluate both high performance and stability, two distinct pathways are investigated:
 
-1. **Option A: NFS-Backed RWX Shared Layer (Primary Evaluation Strategy)**
-   - A dedicated clustered NFS gateway or NFS CSI provisioner mounts a high-performance Mayastor RWO volume and exports it with `ReadWriteMany` access mode to the cluster.
-   - KubeVirt VMs consume the shared volume formatted with an underlying filesystem storing raw or qcow2 VM disk images.
-   - *Trade-off:* Introduces NFS protocol translation and file-locking overhead, potentially compromising raw NVMe throughput.
+1. **Option A: Native Mayastor RWX Block Volumes (Primary Innovation Target — OpenEBS 4.6+ / Mayastor v2.11+)**
+   - *Mechanism:* Mayastor exposes an NVMe-oF target capable of accepting simultaneous attachments from both source and destination worker node `nvme-tcp` initiators (`volumeMode: Block`, `accessModes: [ReadWriteMany]`).
+   - *Concurrency & Fencing:* There is no distributed lock manager (DLM); concurrency safety relies on **QEMU / KubeVirt hypervisor serialization** (only the active guest VM issues writes; the target VM is in pre-copy receive mode until cutover).
+   - *Performance:* Delivers near-bare-metal NVMe wire throughput and sub-millisecond tail latency.
+   - *Status:* Upstream **EXPERIMENTAL**. Behavior during sudden network splits requires empirical evaluation in Chunk 9.
 
-2. **Option B: Multi-Attach Block / Dual-Initiator Nexus (Experimental Research Extension)**
-   - Investigating experimental Mayastor features or custom CSI volume attachment policies enabling transient multi-attach during KubeVirt migration windows.
-   - *Risk:* High complexity; risk of split-brain or data corruption if multiple initiators issue non-coordinated writes to a non-clustered filesystem.
+2. **Option B: Clustered NFS Gateway RWX Layer (Conservative Fallback Baseline)**
+   - *Mechanism:* An NFS server pod mounts a Mayastor RWO volume, formats it (ext4/XFS), and exports an RWX filesystem via `csi-driver-nfs`.
+   - *Trade-off:* Introduces Linux VFS overhead and NFSv4 RPC latency (~25,000–45,000 IOPS vs >150,000 IOPS on block), but provides proven, standards-compliant POSIX file locking.
+   - *SPOF Risk:* The NFS server pod represents a temporary single point of failure if its host node crashes.
 
-### 6.3 Failure Considerations of the Shared Gateway
-- **Gateway Single Point of Failure (SPOF):** If the NFS server gateway crashes during migration or normal I/O, all connected VMs experience I/O hangs.
-- **Cache Coherency:** NFS client caching must be set to direct/sync mode (`cache=none` or `sync`) to prevent QEMU disk corruption, incurring latency penalties.
+### 6.3 Decoupling Storage Fault Tolerance from Control-Plane Quorum
+- **Control-Plane Quorum:** Handled exclusively by `etcd` Raft ($Q = \lfloor M/2 
+\rfloor + 1$). In a 1-node control plane, etcd has zero quorum redundancy.
+- **Storage Volume Fault Tolerance:** Handled by the Mayastor Nexus controller. For a 3-way replicated volume ($N=3$), writes are synchronously mirrored across 3 storage workers. If 1 worker node drops offline, the Nexus continues serving I/O on the remaining 2 healthy replicas. The volume remains operational as long as at least 1 healthy replica remains online.
 
-### 6.4 Adopted Dual-Tier Workload Architecture (ADR-008)
-To resolve the live-migration vs. raw block performance trade-off, the project adopts a Dual-Tier strategy (detailed in `docs/storage-architecture-analysis.md`):
-1. **Tier 1 (Direct Block / Maximum NVMe Throughput):** Stateful benchmarking VMs bind directly to raw Mayastor RWO block volumes (`volumeMode: Block`). Pinned to node; zero filesystem or NFS overhead.
-2. **Tier 2 (Shared Storage / Live-Migratable VMs):** Elastic VMs bind to RWX volumes exported by a clustered NFS gateway backed by a 3-way replicated Mayastor volume. Fully supports KubeVirt live migration across nodes.
+### 6.4 Adopted Comparative Dual-Path Strategy (ADR-008 & ADR-010)
+1. **Tier 1 (Direct Block / Maximum Throughput Control):** Benchmarking VMs bind directly to raw Mayastor RWO block volumes (`volumeMode: Block`). Pinned to node; live migration disabled.
+2. **Tier 2 (Native RWX Block Live Migration):** Elastic VMs bind to native Mayastor RWX block volumes to evaluate zero-overhead NVMe live migration.
+3. **Tier 3 (NFS Gateway RWX Fallback):** Live migration is benchmarked over NFS to quantify the exact "NFS Translation Tax" and serve as a proven fallback.
 
 ---
 

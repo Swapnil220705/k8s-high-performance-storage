@@ -61,8 +61,8 @@
 - **What Needs to be Researched:** Mayastor control plane (REST API, core agent, CSI controller) and data plane (`io-engine` daemonset, SPDK integration, Nexus, DiskPools).
 - **Why It Matters to Our Project:** Mayastor is the foundational storage engine responsible for synchronous block replication and NVMe-oF transport.
 - **Official Documentation:** [OpenEBS Documentation](https://openebs.io/docs/) | [Mayastor GitHub Repository](https://github.com/openebs/mayastor)
-- **Important Implementation Questions:** How does Mayastor handle metadata consensus and dynamic Nexus migration if a storage node hosting the active Nexus fails?
-- **Research Status:** Theoretical review complete; deployment manifests pending Chunk 3.
+- **Important Implementation Questions:** How does Mayastor handle metadata consensus and dynamic Nexus migration if a storage node hosting the active Nexus fails, and how is this decoupled from Kubernetes etcd Raft quorum?
+- **Research Status:** Theoretical review and quorum decoupling clarified in Chunk 1.8 (2026-11-05). Native RWX block volume support investigated in OpenEBS 4.6.x (Mayastor v2.11+). Deployment manifests pending Chunk 3.
 
 ### 8. Storage Performance Development Kit (SPDK)
 - **What Needs to be Researched:** User-space device drivers, Polled Mode Drivers (PMD), lockless ring buffers, hugepage memory mapping, and zero-copy I/O queues.
@@ -110,8 +110,8 @@
 - **What Needs to be Researched:** POSIX filesystem concurrency vs. raw block multi-attach; Kubernetes `ReadWriteOnce` vs. `ReadWriteMany` enforcement.
 - **Why It Matters to Our Project:** Identifies the fundamental architectural challenge: Mayastor provides RWO block devices, while KubeVirt live migration requires RWX storage access.
 - **Official Documentation:** [Kubernetes Persistent Volumes - Access Modes](https://kubernetes.io/docs/concepts/storage/persistent-volumes/#access-modes)
-- **Important Implementation Questions:** Can KubeVirt live migration operate over RWO volumes using transient multi-attach, or is an RWX shared filesystem strictly required?
-- **Research Status:** Theoretical feasibility analysis completed in Chunk 1 (2026-11-04). Detailed findings documented in docs/storage-architecture-analysis.md and formalized in ADR-008. Empirical validation pending Chunks 6 and 8.
+- **Important Implementation Questions:** How does Mayastor's native experimental RWX block volume support (introduced in v2.11 / OpenEBS 4.6) coordinate multi-attach without an in-band distributed lock manager, and how does QEMU hypervisor serialization guarantee write safety?
+- **Research Status:** Corrected and clarified in Chunk 1.8 (2026-11-05). Detailed findings documented in `docs/storage-architecture-analysis.md` and formalized in ADR-008 and ADR-010. Empirical live-migration testing pending Chunk 6.
 
 ### 15. Shared Storage via NFS Gateway Integration
 - **What Needs to be Researched:** NFSv4 server export settings, synchronous locking (`sync`, `no_wdelay`), client mount options (`cache=none`, `hard`, `intr`), and CSI NFS drivers.
