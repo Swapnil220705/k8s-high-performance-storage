@@ -249,3 +249,29 @@
   - *Negative:* Mayastor CRI/CSI interaction on Kubernetes 1.36 requires empirical verification in Chunk 2 pre-flight.
 - **Validation Evidence:**  
   Documented in `docs/compatibility-matrix.md`, `docs/network-and-virtualization-requirements.md`, `docs/storage-architecture-analysis.md`, and `docs/final-deployment-proposal.md`.
+
+---
+
+## ADR-011: Project Strategy Realignment & Decoupling from Institutional Gating
+
+- **Status:** ACCEPTED / ACTIVE
+- **Date:** 2026-11-05 (Chunk 2.1 Strategy Realignment)
+- **Context:**  
+  Previously, college laboratory hardware allocation and institutional administrative permissions were treated as mandatory blocking gates before proceeding beyond Chunk 2.0. However, in an academic systems engineering project under the Zoho SETU program, project progress must not stall due to institutional delays or lab scheduling constraints. The project must demonstrate substantial engineering understanding, implementation capability, experimentation, and documentation without compromising its original technical ambition or inventing fabricated results.
+- **Options Considered:**
+  1. *Option A (Halt Pipeline on Institutional Gate):* Stop all forward progress until college administration signs off and provisions physical servers. (Rejected: causes indefinite stalls and blocks engineering development).
+  2. *Option B (Downscale Technical Architecture to Fit Laptop):* Replace multi-node Mayastor, SPDK, and KubeVirt with a trivial single-node container deployment. (Rejected: violates SETU project problem statement and destroys technical rigor).
+  3. *Option C (Preserve Full Scope, Decouple Gating, Adopt 3-State Evidence Framework):* Maintain the complete 4-node Mayastor and KubeVirt target architecture. Reclassify college infrastructure allocation as an optional resource opportunity. Develop and test all manifests, automation scripts, and test harnesses locally (leveraging verified `/dev/kvm` in WSL2), tracking features as `IMPLEMENTED`, `VALIDATED`, or `INFRASTRUCTURE-DEPENDENT`. (Selected).
+- **Decision:**  
+  Adopt Option C:
+  1. The complete original technical scope (4-node K8s, OpenEBS Mayastor SPDK, NVMe-oF, KubeVirt, dual-path live migration, hot-plugging, fault drills, FIO benchmarks, and observability) remains 100% intact.
+  2. Institutional infrastructure allocation is decoupled from development gating.
+  3. Every feature is tracked under the 3-state framework (`IMPLEMENTED`, `VALIDATED`, `INFRASTRUCTURE-DEPENDENT`). A manifest or script is an artifact, never proof of validation.
+  4. Local WSL2 Ubuntu 24.04 (with confirmed `/dev/kvm`) is utilized for local development, linting, toolchain automation, and lightweight single-node validation.
+- **Reasoning:**  
+  Ensures continuous engineering progress, reproducible automation authoring, and transparent scientific reporting. The project is staged so that when physical hardware or a dedicated lab testing window is accessed, the automated pipeline can be executed in a turn-key manner.
+- **Consequences:**  
+  - *Positive:* Immediate forward momentum; complete production-grade manifests, Helm values, and test harnesses are authored and version-controlled; eliminates project stalls.
+  - *Negative:* Full-scale bare-metal NVMe benchmarks and multi-node live migration remain marked `INFRASTRUCTURE-DEPENDENT` until remote cluster execution occurs.
+- **Validation Evidence:**  
+  Documented in `docs/development-environment-assessment.md` and `docs/development-roadmap.md`.
