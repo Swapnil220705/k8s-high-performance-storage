@@ -63,10 +63,22 @@ The development environment was directly inspected using non-destructive PowerSh
 - **Virtualization Support Inside WSL2:**
   - CPU Flags: `svm` (AMD-V) and `sse4_2` are directly visible in `/proc/cpuinfo`.
   - Nested KVM Acceleration: `/dev/kvm` exists (`crw-rw---- 1 root kvm 10, 232 /dev/kvm`) and is operational.
-- **Existing Container & Kubernetes Tooling:**
-  - `docker`: Installed (Docker version 29.1.3, build 29.1.3-0ubuntu3~24.04.2).
-  - `containerd`: Installed (`containerd github.com/containerd/containerd/v2 2.2.1`).
-  - `podman`, `kubectl`, `kubeadm`, `helm`, `kind`, `minikube`: Not currently installed in WSL2.
+- **Installed Container, Kubernetes & Validation Toolchain (Milestone M1 Empirical Delivery):**
+  - `containerd`: Installed (`containerd github.com/containerd/containerd/v2 2.2.1` — retained, untouched per runtime directive).
+  - `docker`: Installed (`Docker version 29.1.3, build 29.1.3-0ubuntu3~24.04.2` — retained, untouched).
+  - `kubectl`: Installed (`v1.36.0`, official binary, SHA-256 verified).
+  - `helm`: Installed (`v3.17.1`, official binary, SHA-256 verified).
+  - `kubeconform`: Installed (`v0.8.0`, official binary, SHA-256 verified).
+  - `yq`: Installed (`v4.54.3`, official binary, SHA-256 verified).
+  - `virtctl`: Installed (`v1.9.0`, official binary, SHA-256 verified).
+  - `shellcheck`: Installed (`0.9.0`, Ubuntu APT).
+  - `yamllint`: Installed (`1.33.0`, Ubuntu APT).
+  - `shfmt`: Installed (`3.8.0`, Ubuntu APT).
+  - `jq`: Installed (`1.7.1`, Ubuntu APT).
+  - `fio`: Installed (`3.36`, Ubuntu APT).
+  - `git`: Installed (`2.43.0`, Ubuntu APT).
+  - `curl`: Installed (`8.5.0`, Ubuntu APT).
+  - *Reference:* Detailed specifications, delivery channels, and verification commands recorded in [`docs/development-toolchain.md`](development-toolchain.md).
 - **Network Connectivity:**
   - Default NAT virtual switch with functional DNS resolution and outbound internet access (verified via HTTP/2 200 response from `https://github.com`).
 
@@ -188,6 +200,16 @@ For every major project capability, the project maintains:
 > [!WARNING]
 > **Strict Verification Invariant:**  
 > A manifest, configuration file, or shell script is an artifact, not evidence of functionality. **A feature must NEVER be marked as `VALIDATED` solely because its YAML manifest or script exists.**
+
+### 4.2 Milestone M1 Active Feature Ledger
+
+| Feature / Subsystem | Implementation Status | Validation Status | Environment Scope | Test Procedure & Verification Evidence | Known Limitations / Remaining Work |
+| :--- | :---: | :---: | :---: | :--- | :--- |
+| **Development Toolchain** (`kubectl`, `helm`, `virtctl`, `fio`, `yq`, etc.) | **`IMPLEMENTED`** | **`VALIDATED`** | `LOCAL (WSL2)` | Automated by `scripts/setup/install-dev-tools.sh`; verified via `scripts/validate/run-validation.sh`; CLI versions verified. | None for client tooling; all 12 tools operational. |
+| **Static Analysis Linters** (`shellcheck`, `shfmt`, `yamllint`, `kubeconform`) | **`IMPLEMENTED`** | **`VALIDATED`** | `LOCAL (WSL2)` | Executed via `run-validation.sh` across all scripts and YAML files (8/8 steps pass). | None; zero warnings or errors. |
+| **Automated Host Preflight** (`01-host-preflight.sh`) | **`IMPLEMENTED`** | **`VALIDATED`** | `LOCAL (WSL2)` | Executed on WSL2; generated `reports/environment/host-preflight-*.txt` and `.json` (27 PASS, 8 WARN, 0 FAIL). | WSL2 limitations explicitly identified; physical NVMe drive tests marked `NOT TESTABLE`. |
+| **Node Prerequisite Detection** (`02-node-prerequisites.sh`) | **`IMPLEMENTED`** | **`VALIDATED`** | `LOCAL (WSL2)` | Executed in report-only mode; generated `reports/environment/node-prerequisites-*.txt` and `.json` (10 MET, 5 WARN, 0 UNMET). | HugePages allocation (1024 pages) and secondary raw disk configuration remain infrastructure-dependent. |
+| **Hardware KVM Character Device** (`/dev/kvm`) | **`IMPLEMENTED`** | **`VALIDATED`** | `LOCAL (WSL2)` | Inspected via preflight and node prerequisite audits; character device mode `10, 232` confirmed. | Unprivileged local user requires `kvm` group membership; full KubeVirt virt-handler validation scheduled in M4. |
 
 ---
 
