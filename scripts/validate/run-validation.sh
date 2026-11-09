@@ -197,9 +197,12 @@ fi
 # Step 8: Preflight Report Generation Verification
 # ------------------------------------------------------------------------------
 log_step 8 "Verifying Preflight Automation Execution"
-if "${REPO_ROOT}/scripts/setup/01-host-preflight.sh" -q; then
+TEST_TMP="$(mktemp -d /tmp/val-preflight-XXXXXX)"
+if "${REPO_ROOT}/scripts/setup/01-host-preflight.sh" -q -o "${TEST_TMP}"; then
+    rm -rf "${TEST_TMP}"
     log_pass "01-host-preflight.sh executed cleanly and generated reports."
 else
+    rm -rf "${TEST_TMP}"
     log_fail "01-host-preflight.sh encountered fatal failure."
 fi
 
