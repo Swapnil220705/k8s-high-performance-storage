@@ -5,9 +5,9 @@
 **Program:** Zoho SETU — College Student Project Program  
 **Active Branch:** `main`  
 **Current Phase:** Phase 2 — Target Infrastructure Preparation & Kubernetes Cluster Bootstrap  
-**Current Chunk:** Chunk 2.1 — Project Strategy Alignment & Development Environment Assessment  
-**Chunk 2.1 Status:** 🟢 COMPLETED (Scope Preserved, Strategy Decoupled via ADR-011, Roadmap Established)  
-**Overall Completion:** 7 / 16 Milestones Completed (Foundation, Feasibility, Lifecycle & Reconciliation Audits, Baseline Closure, Readiness Planning, Strategy Alignment)  
+**Current Chunk:** Milestone M1 — Development Environment Preparation & Automated Tooling  
+**Milestone M1 Status:** 🟢 COMPLETED (Toolchain Verified, Linters Configured, Preflight & Prerequisites Automated)  
+**Overall Completion:** 8 / 16 Milestones Completed (Foundation, Feasibility, Lifecycle & Reconciliation Audits, Baseline Closure, Readiness Planning, Strategy Alignment, Dev Environment Preparation)  
 
 ---
 
@@ -29,7 +29,7 @@
 | **1.11**| **Final Deployment Baseline and Evidence Closure** | 🟢 **COMPLETED** | Chunk 1.11 | Candidate B Preferred Target, OpenEBS v4.6.x Chart Mapping Verified, MemTotal Memory Sizing & Headroom, Canonical 20-Port Matrix, Single-Writer Migration Protocol, Verified Rebuild Parameters |
 | **2.0**| **Infrastructure Readiness & Access Planning** | 🟢 **COMPLETED** | Chunk 2.0 | Evidence-Based Readiness Tracker, Refined College Questionnaire, Administrative Access Matrix, Fallback Hierarchy, Objective Assessment (NOT READY) |
 | **2.1**| **Project Strategy Alignment & Environment Assessment** | 🟢 **COMPLETED** | Chunk 2.1 | ADR-011 Strategy Realignment, 12-Component Feasibility Matrix, 5 Execution Pathways, 3-State Completion Framework, 10-Milestone Development Roadmap |
-| **M1** | Milestone 1: Dev Environment Preparation & Automated Tooling | ⚪ NOT STARTED | Phase 2 | Toolchain, Linters, Host Preflight Script (`01-host-preflight.sh`) |
+| **M1** | **Milestone 1: Dev Environment Preparation & Automated Tooling** | 🟢 **COMPLETED** | Milestone M1 | Toolchain Installed (12 tools), Linters Configured, Preflight (`01-host-preflight.sh`), Node Prerequisites (`02-node-prerequisites.sh`), Unified Validation (`run-validation.sh`) |
 | **M2** | Milestone 2: Kubernetes Cluster Architecture & Multi-Node Provisioning | ⚪ NOT STARTED | Phase 2 | Kubeadm Configurations, Calico BGP, Local Dev Cluster |
 | **M3** | Milestone 3: OpenEBS Mayastor Storage Engine Deployment | ⚪ NOT STARTED | Phase 2 | Mayastor Helm Values, DiskPool CRDs, StorageClasses |
 | **M4** | Milestone 4: KubeVirt Virtualization Stack Integration | ⚪ NOT STARTED | Phase 2 | Operator, CDI, Local `/dev/kvm` Micro-VM Test |
@@ -100,6 +100,14 @@
   - **Architectural Decision Record (`DECISIONS.md`):** Recorded ADR-011 formally adopting scope preservation, institutional decoupling, and the 3-state evidence framework.
   - **Agent Governance Directives (`AGENTS.md`):** Updated Section 2 with 12 mandatory rules and Section 6 with the 3-state framework.
 - [x] Synchronized `docs/infrastructure-readiness-tracker.md`, `docs/deployment-options.md`, `RESEARCH.md`, `ARCHITECTURE.md`, `README.md`, and `PROJECT_STATE.md`.
+- [x] **Milestone M1 Deliverables (Development Environment Preparation & Automated Tooling):**
+  - Automated toolchain installer (`scripts/setup/install-dev-tools.sh`) installing and cryptographically verifying 12 development tools (`kubectl` v1.36.0, `helm` v3.17.1, `kubeconform` v0.8.0, `yq` v4.54.3, `virtctl` v1.9.0, `yamllint` 1.33.0, `shellcheck` 0.9.0, `shfmt` 3.8.0, `jq` 1.7.1, `fio` 3.36, `git` 2.43.0, `curl` 8.5.0; containerd 2.2.1 and docker 29.1.3 retained).
+  - Non-destructive host preflight script (`scripts/setup/01-host-preflight.sh`) auditing CPU flags, HugePages, `/dev/kvm`, storage, network, and toolchain with dual text and JSON reporting in `reports/environment/`.
+  - Node prerequisite detection script (`scripts/setup/02-node-prerequisites.sh`) with report-only default mode and safe `--apply` interactive controls.
+  - Unified validation runner (`scripts/validate/run-validation.sh`) executing an 8-step verification suite (permissions, ShellCheck, shfmt, yamllint, kubeconform, jq JSON parsing, preflight execution).
+  - Repository-wide YAML lint configuration (`.yamllint.yaml`).
+  - Development toolchain specification and runbook (`docs/development-toolchain.md`).
+  - Generated environment audit reports: `reports/environment/host-preflight-*.txt/.json` and `reports/environment/node-prerequisites-*.txt/.json`.
 
 ### 2.2 Verified Infrastructure Features
 - [x] **Local Hardware Capability:** Verified AMD Ryzen 5 7535HS (6C/12T), AMD-V enabled, 8 GB DDR5 RAM (~1.0 GB free), 1x 512 GB NVMe (~19.3 GB free on C:), WSL2 Ubuntu 24.04 installed.
@@ -183,19 +191,28 @@
   - Commit 2 (`c0dba97`): `docs: establish comprehensive development roadmap` — Formulated authoritative 10-milestone execution architecture (`docs/development-roadmap.md`) covering toolchain, cluster setup, Mayastor, KubeVirt, storage integration, live migration, fault injection, FIO benchmarks, observability, and final report.
   - Commit 3 (`1d71f63`): `docs: record adr-011 for strategy realignment and institutional decoupling` — Recorded ADR-011 in `DECISIONS.md`.
   - Commit 4 (`b39029f`): `docs: update governance operating directives for strategy alignment` — Updated `AGENTS.md` with 12 operating rules and 3-state completion standards.
-  - Commit 5: `docs: synchronize project state and tracking documents for chunk 2.1` — Synchronized `PROJECT_STATE.md`, `README.md`, `ARCHITECTURE.md`, `RESEARCH.md`, `docs/infrastructure-readiness-tracker.md`, and `docs/deployment-options.md`.
+  - Commit 5 (`e66f265`): `docs: synchronize project state and tracking documents for chunk 2.1` — Synchronized `PROJECT_STATE.md`, `README.md`, `ARCHITECTURE.md`, `RESEARCH.md`, `docs/infrastructure-readiness-tracker.md`, and `docs/deployment-options.md`.
+- **2026-11-09:** Completed Milestone M1 Development Environment Preparation & Automated Tooling:
+  - Installed and verified 12 development tools in WSL2 Ubuntu 24.04: `kubectl` v1.36.0, `helm` v3.17.1, `kubeconform` v0.8.0, `yq` v4.54.3, `virtctl` v1.9.0, `shellcheck` 0.9.0, `yamllint` 1.33.0, `shfmt` 3.8.0, `jq` 1.7.1, `fio` 3.36, `git` 2.43.0, `curl` 8.5.0; containerd 2.2.1 and docker 29.1.3 retained.
+  - Implemented reproducible tool installer: `scripts/setup/install-dev-tools.sh`.
+  - Implemented non-destructive host preflight script: `scripts/setup/01-host-preflight.sh` (audited CPU, RAM, HugePages, `/dev/kvm`, block devices, networking, toolchain; generated text/JSON reports).
+  - Implemented node prerequisite detection script: `scripts/setup/02-node-prerequisites.sh` (report-only default mode; audited 15 node requirements).
+  - Implemented unified validation suite: `scripts/validate/run-validation.sh` (8/8 steps pass).
+  - Configured repository YAML lint rules: `.yamllint.yaml`.
+  - Documented toolchain delivery, verification, and audit reports in `docs/development-toolchain.md`.
+  - Updated `docs/development-environment-assessment.md` with active M1 feature completion ledger.
 
 ---
 
 ## 7. Next Authorized Action
 
-Chunk 2.1 is fully complete and validated. **STOP AND AWAIT USER APPROVAL.**  
-Current Strategy State: **DECOUPLED & READY FOR MILESTONE 1 (DEVELOPMENT ENVIRONMENT PREPARATION).**
+Milestone M1 is fully complete and empirically validated. **STOP AND AWAIT USER APPROVAL.**  
+Current Operational State: **LOCAL TOOLCHAIN READY & AUDITED. READY FOR MILESTONE 2 (KUBERNETES CLUSTER ARCHITECTURE & PROVISIONING).**
 
 Next steps upon explicit user authorization:
-- **Milestone 1 — Development Environment Preparation & Automated Tooling:**
-  1. Author non-destructive host pre-flight verification script (`scripts/setup/01-host-preflight.sh`) auditing CPU flags, HugePages, `/dev/kvm`, and `nvme-tcp`.
-  2. Author baseline node preparation script (`scripts/setup/02-node-prerequisites.sh`).
-  3. Install and configure local development linters (`kubeconform`, `yamllint`, `shellcheck`) and CLI utilities (`kubectl`, `helm`, `virtctl`) inside WSL2.
-  4. Test pre-flight script locally against WSL2 Ubuntu 24.04 to verify detection logic.
-- **DO NOT start package installations or script execution until explicit user authorization is granted.**
+- **Milestone 2 — Kubernetes Cluster Architecture & Multi-Node Provisioning:**
+  1. Author parameterized `kubeadm` initialization configuration (`infrastructure/k8s/kubeadm-init-config.yaml`) for Kubernetes 1.36.x / containerd 2.3 LTS.
+  2. Author reproducible cluster bootstrap scripts (`scripts/setup/03-bootstrap-control-plane.sh`, `04-join-worker-node.sh`).
+  3. Author Calico CNI manifest bundle with custom Pod CIDR matching cluster configuration.
+  4. Author lightweight local single-node cluster harness (using `kind` or `k3s`) budgeted < 2.0 GiB RAM for offline manifest validation and micro-VM tests.
+- **DO NOT start cluster provisioning or script execution until explicit user authorization is granted.**

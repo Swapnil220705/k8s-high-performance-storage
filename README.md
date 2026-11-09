@@ -4,7 +4,7 @@
 **Program:** Zoho SETU — College Student Project Program  
 **Category:** Cloud Infrastructure / Kubernetes / Virtualization / Distributed Storage / Systems Engineering  
 **Repository Branch:** `main`  
-**Status:** In Progress (Phase 2 — Target Infrastructure Preparation; Chunk 2.1 Strategy Realignment & Environment Assessment Complete)  
+**Status:** In Progress (Phase 2 — Target Infrastructure Preparation; Milestone M1 Development Environment Preparation & Tooling Complete)  
 
 ---
 
@@ -20,7 +20,7 @@ Modern cloud-native environments increasingly converge containerized microservic
 This project investigates, designs, deploys, and benchmarks a high-performance cloud-native storage architecture centered on **OpenEBS Mayastor**, leveraging the **Storage Performance Development Kit (SPDK)** and **NVMe over Fabrics (NVMe-oF)** to service **KubeVirt** virtual machine workloads on a multi-node Kubernetes cluster.
 
 > [!IMPORTANT]
-> **Project Phase & Strategic Alignment (ADR-011):** This project has completed **Phase 1 Infrastructure Discovery (Chunks 0 through 1.11)**, **Chunk 2.0 Readiness Planning**, and **Chunk 2.1 Strategy Realignment & Development Environment Assessment**. In accordance with **ADR-011**, the complete 4-node Mayastor/KubeVirt architecture remains fully preserved as the target specification, while development and validation proceed decoupled from institutional hardware gating in accordance with the 10-milestone roadmap ([`docs/development-roadmap.md`](docs/development-roadmap.md)). No infrastructure claims are made prior to concrete test execution and data collection.
+> **Project Phase & Strategic Alignment (ADR-011):** This project has completed **Phase 1 Infrastructure Discovery (Chunks 0 through 1.11)**, **Chunk 2.0 Readiness Planning**, **Chunk 2.1 Strategy Realignment**, and **Milestone M1 Development Environment Preparation & Automated Tooling**. In accordance with **ADR-011**, the complete 4-node Mayastor/KubeVirt architecture remains fully preserved as the target specification, while development and validation proceed decoupled from institutional hardware gating in accordance with the 10-milestone roadmap ([`docs/development-roadmap.md`](docs/development-roadmap.md)). No infrastructure claims are made prior to concrete test execution and data collection.
 
 ---
 
