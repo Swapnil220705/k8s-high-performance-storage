@@ -1,0 +1,26 @@
+==============================================================================
+       Kubernetes & Mayastor Storage Node Prerequisites Audit Report
+==============================================================================
+Report Date:    2026-11-09T17:01:32Z
+Node Hostname:  swapnil
+Execution Mode: report
+Summary:        MET: 10 | WARN: 5 | UNMET: 0
+------------------------------------------------------------------------------
+STATUS | CATEGORY       | COMPONENT                | REQUIREMENT                    | CURRENT STATE
+------------------------------------------------------------------------------
+[MET]  | [OS]           | Distribution             | Ubuntu 22.04/24.04 LTS         | Ubuntu 24.04.4 LTS 
+[MET]  | [Kernel]       | Kernel Version           | >= 5.15 LTS                    | Kernel 6.6.87.2-microsoft-standard-WSL2 
+[MET]  | [CPU]          | Architecture             | x86_64                         | x86_64 
+[MET]  | [CPU]          | Cores (Storage Node)     | >= 6 cores for Mayastor SPDK   | 12 cores available 
+[MET]  | [CPU]          | SSE4.2 Instruction Set   | SSE4.2 flag present            | Supported 
+[WARN] | [Memory]       | Total RAM (Storage Node) | >= 8.0 GiB                     | 3515 MiB (Restricted local dev baseline) 
+[WARN] | [HugePages]    | 2048 kB HugePages        | 1024 pages (2 GiB)             | 0 pages configured (HugePages allocation required for Mayastor) 
+[WARN] | [Kernel Module] | overlay                  | Module loaded                  | Available as kernel module, but not currently loaded 
+[MET]  | [Kernel Module] | br_netfilter             | Module loaded                  | Loaded in running kernel 
+[WARN] | [Kernel Module] | nvme_tcp                 | Module loaded                  | Available as kernel module, but not currently loaded 
+[MET]  | [Sysctl]       | net.ipv4.ip_forward      | 1                              | Enabled (1) 
+[MET]  | [Sysctl]       | bridge-nf-call-iptables  | 1                              | Enabled (1) 
+[MET]  | [Storage]      | Dedicated Raw Block Device | >= 1 dedicated unpartitioned drive | 2 candidate disk(s): /dev/sda /dev/sdb 
+[WARN] | [Virtualization] | /dev/kvm Access          | Present and read-write accessible | Present, but current user lacks r/w permission (add to kvm group) 
+[MET]  | [Runtime]      | containerd Runtime       | Installed                      | containerd 2.2.1 
+==============================================================================

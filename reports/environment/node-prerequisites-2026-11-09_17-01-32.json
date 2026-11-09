@@ -1,0 +1,29 @@
+{
+  "metadata": {
+    "reportDate": "2026-11-09T17:01:32Z",
+    "hostname": "swapnil",
+    "mode": "report",
+    "summary": {
+      "met": 10,
+      "warn": 5,
+      "unmet": 0
+    }
+  },
+  "checks": [
+    {"category":"OS","status":"MET","component":"Distribution","requirement":"Ubuntu 22.04/24.04 LTS","state":"Ubuntu 24.04.4 LTS "}
+   ,{"category":"Kernel","status":"MET","component":"Kernel Version","requirement":">= 5.15 LTS","state":"Kernel 6.6.87.2-microsoft-standard-WSL2 "}
+   ,{"category":"CPU","status":"MET","component":"Architecture","requirement":"x86_64","state":"x86_64 "}
+   ,{"category":"CPU","status":"MET","component":"Cores (Storage Node)","requirement":">= 6 cores for Mayastor SPDK","state":"12 cores available "}
+   ,{"category":"CPU","status":"MET","component":"SSE4.2 Instruction Set","requirement":"SSE4.2 flag present","state":"Supported "}
+   ,{"category":"Memory","status":"WARN","component":"Total RAM (Storage Node)","requirement":">= 8.0 GiB","state":"3515 MiB (Restricted local dev baseline) "}
+   ,{"category":"HugePages","status":"WARN","component":"2048 kB HugePages","requirement":"1024 pages (2 GiB)","state":"0 pages configured (HugePages allocation required for Mayastor) "}
+   ,{"category":"Kernel Module","status":"WARN","component":"overlay","requirement":"Module loaded","state":"Available as kernel module, but not currently loaded "}
+   ,{"category":"Kernel Module","status":"MET","component":"br_netfilter","requirement":"Module loaded","state":"Loaded in running kernel "}
+   ,{"category":"Kernel Module","status":"WARN","component":"nvme_tcp","requirement":"Module loaded","state":"Available as kernel module, but not currently loaded "}
+   ,{"category":"Sysctl","status":"MET","component":"net.ipv4.ip_forward","requirement":"1","state":"Enabled (1) "}
+   ,{"category":"Sysctl","status":"MET","component":"bridge-nf-call-iptables","requirement":"1","state":"Enabled (1) "}
+   ,{"category":"Storage","status":"MET","component":"Dedicated Raw Block Device","requirement":">= 1 dedicated unpartitioned drive","state":"2 candidate disk(s): /dev/sda /dev/sdb "}
+   ,{"category":"Virtualization","status":"WARN","component":"/dev/kvm Access","requirement":"Present and read-write accessible","state":"Present, but current user lacks r/w permission (add to kvm group) "}
+   ,{"category":"Runtime","status":"MET","component":"containerd Runtime","requirement":"Installed","state":"containerd 2.2.1 "}
+  ]
+}

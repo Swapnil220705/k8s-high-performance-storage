@@ -1,0 +1,51 @@
+{
+  "metadata": {
+    "reportDate": "2026-11-09T17:06:37Z",
+    "kernel": "6.6.87.2-microsoft-standard-WSL2",
+    "architecture": "x86_64",
+    "summary": {
+      "pass": 27,
+      "warning": 8,
+      "fail": 0,
+      "notTestable": 1
+    }
+  },
+  "checks": [
+    {"category":"OS","status":"PASS","title":"Distribution Suitability","details":"Ubuntu 24.04.4 LTS matches project baseline "}
+   ,{"category":"OS","status":"PASS","title":"Linux Kernel Release","details":"Kernel 6.6.87.2-microsoft-standard-WSL2 (>= 5.15 requirement met) "}
+   ,{"category":"ENV","status":"WARNING","title":"Virtualization Platform","details":"WSL2 environment detected (Microsoft customized kernel) "}
+   ,{"category":"ENV","status":"WARNING","title":"WSL2 Constraint Audit","details":"Shared host memory and NAT vEthernet active; lacks bare-metal NVMe isolation "}
+   ,{"category":"CPU","status":"PASS","title":"Instruction Architecture","details":"x86_64 architecture confirmed "}
+   ,{"category":"CPU","status":"PASS","title":"vCPU Count & Model","details":"12 vCPUs available (AMD Ryzen 5 7535HS with Radeon Graphics) "}
+   ,{"category":"CPU","status":"PASS","title":"SSE4.2 Instruction Set","details":"SSE4.2 vector instructions supported (required by SPDK/DPDK) "}
+   ,{"category":"CPU","status":"PASS","title":"Hardware Virtualization Flag","details":"Hardware virtualization flag 'svm' present in CPU flags "}
+   ,{"category":"RAM","status":"WARNING","title":"Physical Memory Capacity","details":"Total: 3515 MiB, Available: 2821 MiB (Restricted local WSL2 budget) "}
+   ,{"category":"RAM","status":"WARNING","title":"Swap Allocation","details":"Swap enabled: 1024 MiB (standard kubelet requires swapoff or failSwapOn: false) "}
+   ,{"category":"HugePages","status":"PASS","title":"Kernel HugePage Support","details":"Page Size: 2048 kB, Configured Total: 0, Free: 0 "}
+   ,{"category":"HugePages","status":"WARNING","title":"2 GiB HugePage Feasibility","details":"Constrained: Reserving 2 GiB HugePages would leave < 1.0 GiB available RAM in WSL2 "}
+   ,{"category":"KVM","status":"WARNING","title":"KVM Character Device","details":"/dev/kvm present (crw-rw---- root kvm) but unprivileged user lacks read-write access "}
+   ,{"category":"KVM","status":"WARNING","title":"KVM ioctl API Verification","details":"KVM ioctl probe skipped (requires r/w permissions or python3) "}
+   ,{"category":"KubeVirt","status":"WARNING","title":"KubeVirt Acceleration Guardrail","details":"/dev/kvm presence confirms kernel acceleration, but KubeVirt requires virt-handler DaemonSet validation "}
+   ,{"category":"Storage","status":"PASS","title":"Root Filesystem Capacity","details":"939 GiB free disk space available on / "}
+   ,{"category":"Storage","status":"PASS","title":"Block Device Enumeration","details":"6 block devices visible in Linux subsystem "}
+   ,{"category":"Storage","status":"NOT_TESTABLE","title":"Physical NVMe Visibility","details":"Zero /dev/nvme* devices visible in WSL2 (Mayastor DiskPool requires dedicated block device) "}
+   ,{"category":"Storage","status":"PASS","title":"Kernel Module nvme-tcp","details":"nvme-tcp kernel module is compiled and available for loading "}
+   ,{"category":"Network","status":"PASS","title":"Default Route & Interface","details":"Interface: eth0, IPv4: 192.168.226.227 "}
+   ,{"category":"Network","status":"PASS","title":"DNS Resolution","details":"Domain name resolution functional (dl.k8s.io, github.com resolved) "}
+   ,{"category":"Network","status":"PASS","title":"Kernel IP Forwarding","details":"net.ipv4.ip_forward is enabled (= 1) "}
+   ,{"category":"Toolchain","status":"PASS","title":"Utility: kubectl","details":"v1.36.0 "}
+   ,{"category":"Toolchain","status":"PASS","title":"Utility: helm","details":"v3.17.1 "}
+   ,{"category":"Toolchain","status":"PASS","title":"Utility: kubeconform","details":"v0.8.0 "}
+   ,{"category":"Toolchain","status":"PASS","title":"Utility: yamllint","details":"yamllint 1.33.0 "}
+   ,{"category":"Toolchain","status":"PASS","title":"Utility: shellcheck","details":"0.9.0 "}
+   ,{"category":"Toolchain","status":"PASS","title":"Utility: shfmt","details":"3.8.0 "}
+   ,{"category":"Toolchain","status":"PASS","title":"Utility: jq","details":"jq-1.7 "}
+   ,{"category":"Toolchain","status":"PASS","title":"Utility: yq","details":"v4.54.3 "}
+   ,{"category":"Toolchain","status":"PASS","title":"Utility: git","details":"2.43.0 "}
+   ,{"category":"Toolchain","status":"PASS","title":"Utility: curl","details":"8.5.0 "}
+   ,{"category":"Toolchain","status":"PASS","title":"Utility: fio","details":"fio-3.36 "}
+   ,{"category":"Toolchain","status":"PASS","title":"Utility: virtctl","details":"v1.9.0 "}
+   ,{"category":"Toolchain","status":"PASS","title":"Utility: containerd","details":"2.2.1 "}
+   ,{"category":"Toolchain","status":"PASS","title":"Utility: docker","details":"29.1.3 "}
+  ]
+}

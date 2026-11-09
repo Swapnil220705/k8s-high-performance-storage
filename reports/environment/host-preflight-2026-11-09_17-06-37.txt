@@ -1,0 +1,48 @@
+==============================================================================
+       Kubernetes High-Performance Storage — Host Preflight Report
+==============================================================================
+Report Date:    2026-11-09T17:06:37Z
+Host System:    Linux swapnil 6.6.87.2-microsoft-standard-WSL2 #1 SMP PREEMPT_DYNAMIC Thu Jun  5 18:30:46 UTC 2025 x86_64 x86_64 x86_64 GNU/Linux
+Kernel Release: 6.6.87.2-microsoft-standard-WSL2
+Architecture:   x86_64
+Summary:        PASS: 27 | WARN: 8 | FAIL: 0 | NOT TESTABLE: 1
+------------------------------------------------------------------------------
+STATUS | CATEGORY     | CHECK                                  | DETAILS
+------------------------------------------------------------------------------
+[PASS] | [OS]         | Distribution Suitability               | Ubuntu 24.04.4 LTS matches project baseline 
+[PASS] | [OS]         | Linux Kernel Release                   | Kernel 6.6.87.2-microsoft-standard-WSL2 (>= 5.15 requirement met) 
+[WARN] | [ENV]        | Virtualization Platform                | WSL2 environment detected (Microsoft customized kernel) 
+[WARN] | [ENV]        | WSL2 Constraint Audit                  | Shared host memory and NAT vEthernet active; lacks bare-metal NVMe isolation 
+[PASS] | [CPU]        | Instruction Architecture               | x86_64 architecture confirmed 
+[PASS] | [CPU]        | vCPU Count & Model                     | 12 vCPUs available (AMD Ryzen 5 7535HS with Radeon Graphics) 
+[PASS] | [CPU]        | SSE4.2 Instruction Set                 | SSE4.2 vector instructions supported (required by SPDK/DPDK) 
+[PASS] | [CPU]        | Hardware Virtualization Flag           | Hardware virtualization flag 'svm' present in CPU flags 
+[WARN] | [RAM]        | Physical Memory Capacity               | Total: 3515 MiB, Available: 2821 MiB (Restricted local WSL2 budget) 
+[WARN] | [RAM]        | Swap Allocation                        | Swap enabled: 1024 MiB (standard kubelet requires swapoff or failSwapOn: false) 
+[PASS] | [HugePages]  | Kernel HugePage Support                | Page Size: 2048 kB, Configured Total: 0, Free: 0 
+[WARN] | [HugePages]  | 2 GiB HugePage Feasibility             | Constrained: Reserving 2 GiB HugePages would leave < 1.0 GiB available RAM in WSL2 
+[WARN] | [KVM]        | KVM Character Device                   | /dev/kvm present (crw-rw---- root kvm) but unprivileged user lacks read-write access 
+[WARN] | [KVM]        | KVM ioctl API Verification             | KVM ioctl probe skipped (requires r/w permissions or python3) 
+[WARN] | [KubeVirt]   | KubeVirt Acceleration Guardrail        | /dev/kvm presence confirms kernel acceleration, but KubeVirt requires virt-handler DaemonSet validation 
+[PASS] | [Storage]    | Root Filesystem Capacity               | 939 GiB free disk space available on / 
+[PASS] | [Storage]    | Block Device Enumeration               | 6 block devices visible in Linux subsystem 
+[NOT_] | [Storage]    | Physical NVMe Visibility               | Zero /dev/nvme* devices visible in WSL2 (Mayastor DiskPool requires dedicated block device) 
+[PASS] | [Storage]    | Kernel Module nvme-tcp                 | nvme-tcp kernel module is compiled and available for loading 
+[PASS] | [Network]    | Default Route & Interface              | Interface: eth0, IPv4: 192.168.226.227 
+[PASS] | [Network]    | DNS Resolution                         | Domain name resolution functional (dl.k8s.io, github.com resolved) 
+[PASS] | [Network]    | Kernel IP Forwarding                   | net.ipv4.ip_forward is enabled (= 1) 
+[PASS] | [Toolchain]  | Utility: kubectl                       | v1.36.0 
+[PASS] | [Toolchain]  | Utility: helm                          | v3.17.1 
+[PASS] | [Toolchain]  | Utility: kubeconform                   | v0.8.0 
+[PASS] | [Toolchain]  | Utility: yamllint                      | yamllint 1.33.0 
+[PASS] | [Toolchain]  | Utility: shellcheck                    | 0.9.0 
+[PASS] | [Toolchain]  | Utility: shfmt                         | 3.8.0 
+[PASS] | [Toolchain]  | Utility: jq                            | jq-1.7 
+[PASS] | [Toolchain]  | Utility: yq                            | v4.54.3 
+[PASS] | [Toolchain]  | Utility: git                           | 2.43.0 
+[PASS] | [Toolchain]  | Utility: curl                          | 8.5.0 
+[PASS] | [Toolchain]  | Utility: fio                           | fio-3.36 
+[PASS] | [Toolchain]  | Utility: virtctl                       | v1.9.0 
+[PASS] | [Toolchain]  | Utility: containerd                    | 2.2.1 
+[PASS] | [Toolchain]  | Utility: docker                        | 29.1.3 
+==============================================================================
