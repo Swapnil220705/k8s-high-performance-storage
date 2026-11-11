@@ -1,0 +1,82 @@
+---
+# Standardized Benchmark Matrix Specification (FIO v3.30+)
+# Project: Deploy High-Performance Storage for Kubernetes (SWFW_5S_08)
+metadata:
+  schemaVersion: "1.0"
+  fioMinVersion: "3.30"
+  localValidatedFioVersion: "3.36"
+  evidenceRules:
+    - "Never compare runs from distinct environment_class values (e.g., wsl2-virtual vs bare-metal-4node) without explicit mismatch banners."
+    - "WSL2 virtual disks must NEVER be recorded as physical NVMe benchmarks."
+    - "Raw block targets require explicit operator path confirmation and block-safety checks."
+
+profiles:
+  - id: 4k-randread
+    file: benchmarks/fio/4k-randread.fio
+    pattern: randread
+    blockSize: 4k
+    defaultQueueDepths: [1, 16, 32, 64]
+    defaultNumJobs: [1, 4]
+  - id: 4k-randwrite
+    file: benchmarks/fio/4k-randwrite.fio
+    pattern: randwrite
+    blockSize: 4k
+    defaultQueueDepths: [1, 16, 32, 64]
+    defaultNumJobs: [1, 4]
+  - id: 4k-randrw-70-30
+    file: benchmarks/fio/4k-randrw-70-30.fio
+    pattern: randrw
+    blockSize: 4k
+    rwMixRead: 70
+    defaultQueueDepths: [16, 32]
+    defaultNumJobs: [2, 4]
+  - id: 64k-seqread
+    file: benchmarks/fio/64k-seqread.fio
+    pattern: read
+    blockSize: 64k
+    defaultQueueDepths: [8, 16]
+    defaultNumJobs: [1, 2]
+  - id: 64k-seqwrite
+    file: benchmarks/fio/64k-seqwrite.fio
+    pattern: write
+    blockSize: 64k
+    defaultQueueDepths: [8, 16]
+    defaultNumJobs: [1, 2]
+  - id: 1m-bandwidth
+    file: benchmarks/fio/1m-bandwidth.fio
+    pattern: read+write
+    blockSize: 1m
+    defaultQueueDepths: [8]
+    defaultNumJobs: [2]
+
+storageTargets:
+  - tier: local-baseline
+    label: "1. Local Baseline Storage (Host Physical NVMe Control)"
+    accessMode: ReadWriteOnce
+    volumeMode: Filesystem
+    expectedOverhead: "Baseline (0 network / 0 hypervisor hops)"
+  - tier: mayastor-rwo-fs
+    label: "2. Mayastor Replicated RWO Filesystem (mayastor-nvme-r3-ext4)"
+    storageClass: mayastor-nvme-r3-ext4
+    accessMode: ReadWriteOnce
+    volumeMode: Filesystem
+    expectedOverhead: "SPDK 3x NVMe-oF replication + ext4 VFS"
+  - tier: mayastor-rwo-block
+    label: "3. Mayastor Replicated RWO Block (mayastor-nvme-r3-block / VM Raw)"
+    storageClass: mayastor-nvme-r3-block
+    accessMode: ReadWriteOnce
+    volumeMode: Block
+    expectedOverhead: "SPDK 3x NVMe-oF replication + direct virtio-blk (zero host VFS)"
+  - tier: nfs-rwx
+    label: "4. NFS-Backed RWX Filesystem (nfs-mayastor-rwx)"
+    storageClass: nfs-mayastor-rwx
+    accessMode: ReadWriteMany
+    volumeMode: Filesystem
+    expectedOverhead: "Mayastor RWO + single NFSv4.1 gateway RPC translation tax"
+  - tier: mayastor-rwx-block-exp
+    label: "5. Opt-In Experimental Mayastor RWX Block (mayastor-nvme-r3-block-rwx)"
+    storageClass: mayastor-nvme-r3-block-rwx
+    accessMode: ReadWriteMany
+    volumeMode: Block
+    experimental: true
+    expectedOverhead: "Experimental NVMe-oF multi-attach block research comparison"

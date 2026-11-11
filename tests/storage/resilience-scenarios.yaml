@@ -1,0 +1,76 @@
+---
+# OpenEBS Mayastor Storage Resilience & Failure Recovery Scenario Matrix
+# Project: Deploy High-Performance Storage for Kubernetes (SWFW_5S_08)
+# Classification:
+#   - Simulation / Dry-Run Plans: VALIDATED locally via static checks & dry-run harness.
+#   - Live Cluster Fault Injection: INFRASTRUCTURE-DEPENDENT (requires >= 3 storage workers + live Mayastor).
+metadata:
+  schemaVersion: "1.0"
+  storageEngine: "OpenEBS 4.6.2 / Mayastor v2.12.2"
+  partialRebuildWaitPeriod: "10m"
+  replicationFactor: 3
+
+scenarios:
+  - id: io-engine-restart
+    title: "Mayastor io-engine Pod Failure & Partial Write-Log Rebuild"
+    severity: non-destructive-reversible
+    wsl2Allowed: false
+    preconditions:
+      - ">= 3 Ready Mayastor storage worker nodes with Online DiskPools"
+      - "Replicated 3-way PVC (mayastor-nvme-r3-ext4) Bound and payload checksum written"
+    injectedEvent: "Gracefully delete one worker's openebs-io-engine pod (Replica child, non-Nexus if possible)"
+    expectedBehavior:
+      - "Nexus transitions faulted child offline and volume status enters Degraded (2/3 replicas)"
+      - "Workload writes continue uninterrupted across surviving 2 healthy replicas"
+      - "DaemonSet restarts io-engine within < 10m (--faulted-child-wait-period=10m)"
+      - "Nexus replays dirty write-log extents (Partial Rebuild) and volume returns to Online (3/3)"
+      - "Post-recovery SHA-256 verification matches baseline checksum identically (RPO = 0)"
+    recoveryAndCleanup:
+      - "Confirm openebs-io-engine DaemonSet shows DESIRED == READY"
+      - "Confirm DiskPool status == Online across all 3 pools"
+      - "Run verify-volume-checksum.sh verify"
+
+  - id: worker-cordon-drain
+    title: "Storage Worker Maintenance Simulation & Anti-Affinity Degradation Barrier"
+    severity: controlled-reversible
+    wsl2Allowed: false
+    preconditions:
+      - "3 storage worker nodes hosting DiskPools (rack-1, rack-2, rack-3)"
+      - "Target worker node explicitly selected via --target-node"
+    injectedEvent: "Cordon selected worker node (optionally scale/disrupt local consumer or observe scheduling)"
+    expectedBehavior:
+      - "Because N=3 replicas occupy all 3 workers, Mayastor cannot spawn a 4th replacement replica on surviving 2 nodes (anti-affinity barrier)"
+      - "Volume stays Degraded without false replacement churn until worker is uncordoned/recovered"
+      - "Existing NVMe-oF data-plane I/O remains unaffected by control-plane scheduling state"
+    recoveryAndCleanup:
+      - "TRAP/FINALIZE always executes: kubectl uncordon <TARGET_NODE>"
+      - "Re-verify node Ready/Schedulable and run observe-rebuild-events.sh"
+
+  - id: pool-degradation-check
+    title: "DiskPool State, I/O Error Threshold & Rebuild Window Boundary Audit"
+    severity: read-only-observation
+    wsl2Allowed: false
+    preconditions:
+      - "DiskPool CRs (openebs.io/v1beta3) provisioned on target worker nodes"
+    injectedEvent: "Inspect DiskPool status/capacity/cr_state + Mayastor REST /v0/pools & /v0/volumes telemetry"
+    expectedBehavior:
+      - "Healthy pools report cr_state=Created and status=Online"
+      - "Disconnects > 10m exhaust --faulted-child-wait-period write log and require Full Rebuild"
+      - "Detects DiskPool capacity exhaustion (>85% warning, >95% critical) and IO stall alerts"
+    recoveryAndCleanup:
+      - "Archive DiskPool JSON & event log under reports/storage/"
+
+  - id: nfs-gateway-restart
+    title: "NFSv4.1 RWX Gateway Pod Recovery over Mayastor RWO"
+    severity: non-destructive-reversible
+    wsl2Allowed: false
+    preconditions:
+      - "Deployment storage-nfs/mayastor-nfs-server Ready and backed by Bound RWO PVC (nfs-backing-mayastor-rwo)"
+    injectedEvent: "Delete mayastor-nfs-server pod to trigger Kubernetes Recreate rollout"
+    expectedBehavior:
+      - "VolumeAttachment detaches cleanly from previous node/pod and re-attaches via nvme-tcp"
+      - "NFSv4.1 hard mounts (nfsvers=4.1,hard,timeo=600) pause guest I/O transparently without EIO"
+      - "Existing guest disk image / checksum file inside export remains intact"
+    recoveryAndCleanup:
+      - "Wait for storage-nfs/mayastor-nfs-server rollout status Complete"
+      - "Verify VM storage marker and checksum intact"

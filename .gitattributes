@@ -1,0 +1,8 @@
+# Enforce Unix LF line endings across scripts, YAML manifests, FIO profiles, Python & JSON
+*.sh text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.fio text eol=lf
+*.py text eol=lf
+*.json text eol=lf
+

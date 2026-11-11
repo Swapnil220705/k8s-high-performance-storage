@@ -1,0 +1,20 @@
+==============================================================================
+           OpenEBS Mayastor Storage Resilience Validation Report
+==============================================================================
+Report Date:    2026-11-11T12:35:48Z
+Report Mode:    STANDARD
+WSL2 Detected:  true
+Summary:        PASS: 3 | WARN: 1 | FAIL: 0 | N/T: 5
+------------------------------------------------------------------------------
+STATUS | CATEGORY       | CHECK                              | DETAILS
+------------------------------------------------------------------------------
+[PASS] | [Config      ] | Partial Rebuild & Etcd Quorums     | partial.enabled=true, waitPeriod=10m, etcd replicas=3 (hard)
+[PASS] | [Redundancy  ] | 3-Replica StorageClasses & Zones   | Found 3 repl=3 StorageClasses and 3 zoned worker DiskPools
+[PASS] | [Verification] | Integrity Verifier & Drill Plan    | pod-verify-integrity.yaml uses fsync+sha256sum; 4 resilience scenarios defined
+[WARN] | [Cluster     ] | Mayastor Resilience Runtime        | Mayastor CRD/namespace 'openebs' absent (intentional on 3.5 GiB WSL2 dev host)
+[NOT_] | [Resilience  ] | DiskPool Health & Free Capacity    | Skipped: Live Mayastor storage stack absent
+[NOT_] | [Resilience  ] | io-engine DaemonSet & Restarts     | Skipped: Live Mayastor storage stack absent
+[NOT_] | [Resilience  ] | PVC & VolumeAttachment Availability | Skipped: Live Mayastor storage stack absent
+[NOT_] | [Resilience  ] | Storage Warning Event Audit        | Skipped: Live Mayastor storage stack absent
+[NOT_] | [Resilience  ] | REST Volume Rebuild Telemetry      | Skipped: Live Mayastor storage stack absent
+==============================================================================

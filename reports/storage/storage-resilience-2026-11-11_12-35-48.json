@@ -1,0 +1,67 @@
+{
+  "report_date_utc": "2026-11-11T12:35:48Z",
+  "namespace": "openebs",
+  "wsl2_detected": true,
+  "summary": {
+    "pass": 3,
+    "warning": 1,
+    "fail": 0,
+    "not_testable": 5
+  },
+  "checks": [
+    {
+      "status": "PASS",
+      "category": "Config",
+      "title": "Partial Rebuild & Etcd Quorums",
+      "details": "partial.enabled=true, waitPeriod=10m, etcd replicas=3 (hard)"
+    },
+    {
+      "status": "PASS",
+      "category": "Redundancy",
+      "title": "3-Replica StorageClasses & Zones",
+      "details": "Found 3 repl=3 StorageClasses and 3 zoned worker DiskPools"
+    },
+    {
+      "status": "PASS",
+      "category": "Verification",
+      "title": "Integrity Verifier & Drill Plan",
+      "details": "pod-verify-integrity.yaml uses fsync+sha256sum; 4 resilience scenarios defined"
+    },
+    {
+      "status": "WARNING",
+      "category": "Cluster",
+      "title": "Mayastor Resilience Runtime",
+      "details": "Mayastor CRD/namespace 'openebs' absent (intentional on 3.5 GiB WSL2 dev host)"
+    },
+    {
+      "status": "NOT_TESTABLE",
+      "category": "Resilience",
+      "title": "DiskPool Health & Free Capacity",
+      "details": "Skipped: Live Mayastor storage stack absent"
+    },
+    {
+      "status": "NOT_TESTABLE",
+      "category": "Resilience",
+      "title": "io-engine DaemonSet & Restarts",
+      "details": "Skipped: Live Mayastor storage stack absent"
+    },
+    {
+      "status": "NOT_TESTABLE",
+      "category": "Resilience",
+      "title": "PVC & VolumeAttachment Availability",
+      "details": "Skipped: Live Mayastor storage stack absent"
+    },
+    {
+      "status": "NOT_TESTABLE",
+      "category": "Resilience",
+      "title": "Storage Warning Event Audit",
+      "details": "Skipped: Live Mayastor storage stack absent"
+    },
+    {
+      "status": "NOT_TESTABLE",
+      "category": "Resilience",
+      "title": "REST Volume Rebuild Telemetry",
+      "details": "Skipped: Live Mayastor storage stack absent"
+    }
+  ]
+}

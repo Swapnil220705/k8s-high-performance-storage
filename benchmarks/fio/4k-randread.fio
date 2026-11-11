@@ -1,0 +1,23 @@
+# Versioned FIO Job Profile: 4 KiB Random Read (IOPS & Tail Latency)
+# Project: Deploy High-Performance Storage for Kubernetes (SWFW_5S_08)
+# Usage: fio --filename=<VERIFIED_TARGET_PATH> --output-format=json benchmarks/fio/4k-randread.fio
+[global]
+ioengine=libaio
+direct=1
+time_based=1
+size=2G
+ramp_time=30
+runtime=120
+group_reporting=1
+randrepeat=0
+norandommap=1
+clat_percentiles=1
+percentile_list=50:95:99:99.9
+
+[randread-4k]
+description=4 KiB aligned random read IOPS and sub-millisecond tail latency benchmark
+rw=randread
+bs=4k
+iodepth=32
+numjobs=1
+

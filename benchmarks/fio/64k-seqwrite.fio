@@ -1,0 +1,22 @@
+# Versioned FIO Job Profile: 64 KiB Sequential Write Streaming
+# Project: Deploy High-Performance Storage for Kubernetes (SWFW_5S_08)
+# Usage: fio --filename=<VERIFIED_TARGET_PATH> --output-format=json benchmarks/fio/64k-seqwrite.fio
+[global]
+ioengine=libaio
+direct=1
+time_based=1
+size=4G
+ramp_time=20
+runtime=120
+group_reporting=1
+refill_buffers=1
+clat_percentiles=1
+percentile_list=50:95:99:99.9
+
+[seqwrite-64k]
+description=64 KiB sequential write streaming throughput over NVMe-oF TCP / NFS
+rw=write
+bs=64k
+iodepth=16
+numjobs=1
+
