@@ -1,0 +1,23 @@
+==============================================================================
+        KubeVirt v1.9.1 & CDI v1.66.1 Readiness Validation Report
+==============================================================================
+Report Date:    2026-11-11T12:07:04Z
+Report Mode:    STANDARD
+WSL2 Detected:  true
+Summary:        PASS: 3 | WARN: 4 | FAIL: 0 | N/T: 5
+------------------------------------------------------------------------------
+STATUS | CATEGORY       | CHECK                              | DETAILS
+------------------------------------------------------------------------------
+[WARN] | [Environment]  | WSL2 Hypervisor Runtime            | Running on WSL2 (6.6.87.2-microsoft-standard-WSL2); nested single-node dev host with 3515 MiB total RAM
+[PASS] | [Virtualization] | CPU Hardware Extensions            | CPU exposes 'svm' hardware virtualization extension
+[WARN] | [KVM]          | KVM Device Node & Permissions      | /dev/kvm exists (crw-rw---- root:kvm), current non-root user lacks kvm group rw access; privileged virt-handler can use host device
+[NOT_] | [KVM]          | KVM Kernel API Probe               | Unprivileged user lacks r/w on /dev/kvm for non-root ioctl probe
+[PASS] | [CLI]          | virtctl Client Availability        | virtctl client installed (v1.9.0)
+[PASS] | [Kubernetes]   | Cluster Version Window (1.35-1.36) | Server v1.36.6+k3s1 falls inside KubeVirt v1.9.1 support window (<1.37)
+[WARN] | [Kubernetes]   | Worker Topology Headroom           | Only 1/1 Ready node(s); multi-node KubeVirt target architecture requires 4 nodes
+[WARN] | [KubeVirt]     | KubeVirt & CDI Deployment State    | KubeVirt/CDI CRDs not deployed on local cluster (intentional on 3.5 GiB WSL2 dev host; full execution INFRASTRUCTURE-DEPENDENT)
+[NOT_] | [KubeVirt]     | virt-operator / virt-api / virt-controller | Skipped: KubeVirt not deployed on active cluster
+[NOT_] | [KubeVirt]     | virt-handler KVM Allocatable Device | Skipped: KubeVirt not deployed on active cluster
+[NOT_] | [CDI]          | CDI Controller / Importer Readiness | Skipped: CDI not deployed on active cluster
+[NOT_] | [CLI]          | virtctl Server API Handshake       | Skipped: KubeVirt aggregated API unavailable
+==============================================================================

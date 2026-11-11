@@ -1,0 +1,65 @@
+{
+  "metadata": {
+    "reportDate": "2026-11-11T12:07:10Z",
+    "vm": "kubevirt-workloads/vm-ubuntu-hotplug",
+    "operation": "all",
+    "execute": false,
+    "wsl2Detected": true,
+    "summary": {
+      "pass": 4,
+      "warning": 1,
+      "fail": 0,
+      "notTestable": 3
+    }
+  },
+  "checks": [
+    {
+      "category": "Config",
+      "status": "PASS",
+      "title": "KubeVirt CR LiveUpdate Strategy",
+      "details": "vmRolloutStrategy=LiveUpdate, maxHotplugRatio=4"
+    },
+    {
+      "category": "Manifests",
+      "status": "PASS",
+      "title": "CPU Socket Hot-Plug Ceilings",
+      "details": "sockets=2 -> maxSockets=4, pod CPU limit=4"
+    },
+    {
+      "category": "Manifests",
+      "status": "PASS",
+      "title": "Memory Hot-Plug Headroom",
+      "details": "guest=2Gi -> maxGuest=4Gi, pod memory limit=4608Mi"
+    },
+    {
+      "category": "Manifests",
+      "status": "PASS",
+      "title": "Hot-Plug VM & Volume Schemas",
+      "details": "vm-ubuntu-hotplug-ready.yaml and hotplug-data-volume.yaml strictly valid"
+    },
+    {
+      "category": "Runtime",
+      "status": "WARNING",
+      "title": "KubeVirt Hot-Plug Precondition",
+      "details": "KubeVirt phase='absent' (not deployed)"
+    },
+    {
+      "category": "CPUHotplug",
+      "status": "NOT_TESTABLE",
+      "title": "Live vCPU Socket Expansion",
+      "details": "Skipped: KubeVirt phase='absent' (not deployed)"
+    },
+    {
+      "category": "MemHotplug",
+      "status": "NOT_TESTABLE",
+      "title": "Live Memory Guest Expansion",
+      "details": "Skipped: KubeVirt phase='absent' (not deployed)"
+    },
+    {
+      "category": "DiskHotplug",
+      "status": "NOT_TESTABLE",
+      "title": "Dynamic SCSI Volume Attach/Detach",
+      "details": "Skipped: KubeVirt phase='absent' (not deployed)"
+    }
+  ]
+}

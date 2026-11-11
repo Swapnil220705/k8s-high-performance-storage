@@ -1,0 +1,22 @@
+==============================================================================
+         KubeVirt VM Storage & Access-Mode Validation Report
+==============================================================================
+Report Date:    2026-11-11T12:07:07Z
+Namespace:      kubevirt-workloads
+Report Mode:    STANDARD
+WSL2 Detected:  true
+Summary:        PASS: 5 | WARN: 1 | FAIL: 0 | N/T: 4
+------------------------------------------------------------------------------
+STATUS | CATEGORY       | CHECK                              | DETAILS
+------------------------------------------------------------------------------
+[PASS] | [Manifests]    | RWO Filesystem VM Alignment        | vm-ubuntu-rwo-fs binds mayastor-nvme-r3-ext4 (RWO/Filesystem/eviction=None)
+[PASS] | [Manifests]    | RWO Raw Block VM Alignment         | vm-ubuntu-rwo-block binds mayastor-nvme-r3-block (RWO/Block)
+[PASS] | [Manifests]    | Default Migration Storage (NFS)    | vm-ubuntu-migration-nfs uses non-experimental RWX Filesystem (nfs-mayastor-rwx)
+[PASS] | [Manifests]    | Experimental RWX Block Guard       | vm-ubuntu-rwx-block-exp enforces Block + Manual runStrategy + experimental tag
+[PASS] | [CloudInit]    | Guest Agent Provisioning Spec      | cloud-init-secret.yaml installs and enables qemu-guest-agent
+[WARN] | [StorageClass] | Mayastor SC Presence               | StorageClass mayastor-nvme-r3-ext4 absent (expected on WSL2 single-node dev cluster)
+[NOT_] | [DataVolumes]  | CDI Import & Succeeded Phase       | Skipped: Live Mayastor + CDI cluster absent
+[NOT_] | [PVC]          | VM Root & Data PVC Bound State     | Skipped: Live StorageClasses / VMs absent
+[NOT_] | [VMI]          | Live VM Running & Disk Attach      | Skipped: KubeVirt runtime not deployed
+[NOT_] | [GuestFS]      | Guest Agent & Block Verification   | Skipped: No live VM running
+==============================================================================

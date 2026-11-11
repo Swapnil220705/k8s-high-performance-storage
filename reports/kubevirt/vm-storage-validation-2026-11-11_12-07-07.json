@@ -1,0 +1,76 @@
+{
+  "metadata": {
+    "reportDate": "2026-11-11T12:07:07Z",
+    "namespace": "kubevirt-workloads",
+    "reportOnly": false,
+    "wsl2Detected": true,
+    "summary": {
+      "pass": 5,
+      "warning": 1,
+      "fail": 0,
+      "notTestable": 4
+    }
+  },
+  "checks": [
+    {
+      "category": "Manifests",
+      "status": "PASS",
+      "title": "RWO Filesystem VM Alignment",
+      "details": "vm-ubuntu-rwo-fs binds mayastor-nvme-r3-ext4 (RWO/Filesystem/eviction=None)"
+    },
+    {
+      "category": "Manifests",
+      "status": "PASS",
+      "title": "RWO Raw Block VM Alignment",
+      "details": "vm-ubuntu-rwo-block binds mayastor-nvme-r3-block (RWO/Block)"
+    },
+    {
+      "category": "Manifests",
+      "status": "PASS",
+      "title": "Default Migration Storage (NFS)",
+      "details": "vm-ubuntu-migration-nfs uses non-experimental RWX Filesystem (nfs-mayastor-rwx)"
+    },
+    {
+      "category": "Manifests",
+      "status": "PASS",
+      "title": "Experimental RWX Block Guard",
+      "details": "vm-ubuntu-rwx-block-exp enforces Block + Manual runStrategy + experimental tag"
+    },
+    {
+      "category": "CloudInit",
+      "status": "PASS",
+      "title": "Guest Agent Provisioning Spec",
+      "details": "cloud-init-secret.yaml installs and enables qemu-guest-agent"
+    },
+    {
+      "category": "StorageClass",
+      "status": "WARNING",
+      "title": "Mayastor SC Presence",
+      "details": "StorageClass mayastor-nvme-r3-ext4 absent (expected on WSL2 single-node dev cluster)"
+    },
+    {
+      "category": "DataVolumes",
+      "status": "NOT_TESTABLE",
+      "title": "CDI Import & Succeeded Phase",
+      "details": "Skipped: Live Mayastor + CDI cluster absent"
+    },
+    {
+      "category": "PVC",
+      "status": "NOT_TESTABLE",
+      "title": "VM Root & Data PVC Bound State",
+      "details": "Skipped: Live StorageClasses / VMs absent"
+    },
+    {
+      "category": "VMI",
+      "status": "NOT_TESTABLE",
+      "title": "Live VM Running & Disk Attach",
+      "details": "Skipped: KubeVirt runtime not deployed"
+    },
+    {
+      "category": "GuestFS",
+      "status": "NOT_TESTABLE",
+      "title": "Guest Agent & Block Verification",
+      "details": "Skipped: No live VM running"
+    }
+  ]
+}

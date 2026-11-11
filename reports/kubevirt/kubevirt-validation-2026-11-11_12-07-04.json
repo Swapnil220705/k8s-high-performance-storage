@@ -1,0 +1,89 @@
+{
+  "metadata": {
+    "reportDate": "2026-11-11T12:07:04Z",
+    "reportOnly": false,
+    "wsl2Detected": true,
+    "kubevirtTarget": "v1.9.1",
+    "cdiTarget": "v1.66.1",
+    "summary": {
+      "pass": 3,
+      "warning": 4,
+      "fail": 0,
+      "notTestable": 5
+    }
+  },
+  "checks": [
+    {
+      "category": "Environment",
+      "status": "WARNING",
+      "title": "WSL2 Hypervisor Runtime",
+      "details": "Running on WSL2 (6.6.87.2-microsoft-standard-WSL2); nested single-node dev host with 3515 MiB total RAM"
+    },
+    {
+      "category": "Virtualization",
+      "status": "PASS",
+      "title": "CPU Hardware Extensions",
+      "details": "CPU exposes 'svm' hardware virtualization extension"
+    },
+    {
+      "category": "KVM",
+      "status": "WARNING",
+      "title": "KVM Device Node & Permissions",
+      "details": "/dev/kvm exists (crw-rw---- root:kvm), current non-root user lacks kvm group rw access; privileged virt-handler can use host device"
+    },
+    {
+      "category": "KVM",
+      "status": "NOT_TESTABLE",
+      "title": "KVM Kernel API Probe",
+      "details": "Unprivileged user lacks r/w on /dev/kvm for non-root ioctl probe"
+    },
+    {
+      "category": "CLI",
+      "status": "PASS",
+      "title": "virtctl Client Availability",
+      "details": "virtctl client installed (v1.9.0)"
+    },
+    {
+      "category": "Kubernetes",
+      "status": "PASS",
+      "title": "Cluster Version Window (1.35-1.36)",
+      "details": "Server v1.36.6+k3s1 falls inside KubeVirt v1.9.1 support window (<1.37)"
+    },
+    {
+      "category": "Kubernetes",
+      "status": "WARNING",
+      "title": "Worker Topology Headroom",
+      "details": "Only 1/1 Ready node(s); multi-node KubeVirt target architecture requires 4 nodes"
+    },
+    {
+      "category": "KubeVirt",
+      "status": "WARNING",
+      "title": "KubeVirt & CDI Deployment State",
+      "details": "KubeVirt/CDI CRDs not deployed on local cluster (intentional on 3.5 GiB WSL2 dev host; full execution INFRASTRUCTURE-DEPENDENT)"
+    },
+    {
+      "category": "KubeVirt",
+      "status": "NOT_TESTABLE",
+      "title": "virt-operator / virt-api / virt-controller",
+      "details": "Skipped: KubeVirt not deployed on active cluster"
+    },
+    {
+      "category": "KubeVirt",
+      "status": "NOT_TESTABLE",
+      "title": "virt-handler KVM Allocatable Device",
+      "details": "Skipped: KubeVirt not deployed on active cluster"
+    },
+    {
+      "category": "CDI",
+      "status": "NOT_TESTABLE",
+      "title": "CDI Controller / Importer Readiness",
+      "details": "Skipped: CDI not deployed on active cluster"
+    },
+    {
+      "category": "CLI",
+      "status": "NOT_TESTABLE",
+      "title": "virtctl Server API Handshake",
+      "details": "Skipped: KubeVirt aggregated API unavailable"
+    }
+  ]
+}

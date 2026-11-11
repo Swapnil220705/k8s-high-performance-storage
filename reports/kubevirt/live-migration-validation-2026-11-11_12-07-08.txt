@@ -1,0 +1,18 @@
+==============================================================================
+             KubeVirt Live Migration Validation Report
+==============================================================================
+Report Date:    2026-11-11T12:07:08Z
+Target VMI:     kubevirt-workloads/vm-ubuntu-migration-nfs
+Mode:           CHECK-ONLY
+WSL2 Detected:  true
+Summary:        PASS: 2 | WARN: 1 | FAIL: 0 | N/T: 3
+------------------------------------------------------------------------------
+STATUS | CATEGORY       | CHECK                              | DETAILS
+------------------------------------------------------------------------------
+[PASS] | [Config]       | KubeVirt CR Migration Guardrails   | disableTLS=false, allowPostCopy=false, bandwidthPerMigration=64Mi
+[PASS] | [Manifests]    | MigrationPolicy & Job Schemas      | MigrationPolicy and VirtualMachineInstanceMigration pass strict CRD schema validation
+[WARN] | [Cluster]      | Multi-Node Migration Precondition  | Cluster has 1 Ready node(s) and KubeVirt phase='absent' (requires >=2 KVM workers + KubeVirt Deployed)
+[NOT_] | [Migration]    | Pre-Migration VMI & RWX PVC Check  | Skipped: Cluster has 1 Ready node(s) and KubeVirt phase='absent' (requires >=2 KVM workers + KubeVirt Deployed)
+[NOT_] | [Migration]    | Live Memory Pre-Copy Execution     | Skipped: Requires >=2 Ready KVM worker nodes & live KubeVirt
+[NOT_] | [Migration]    | Post-Migration Node Switch & Health | Skipped: No live migration executed
+==============================================================================

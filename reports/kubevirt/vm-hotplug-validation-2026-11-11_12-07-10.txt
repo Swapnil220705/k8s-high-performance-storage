@@ -1,0 +1,20 @@
+==============================================================================
+          KubeVirt CPU, Memory & Disk Hot-Plug Validation Report
+==============================================================================
+Report Date:    2026-11-11T12:07:10Z
+Target VM:      kubevirt-workloads/vm-ubuntu-hotplug
+Operation:      all
+WSL2 Detected:  true
+Summary:        PASS: 4 | WARN: 1 | FAIL: 0 | N/T: 3
+------------------------------------------------------------------------------
+STATUS | CATEGORY       | CHECK                              | DETAILS
+------------------------------------------------------------------------------
+[PASS] | [Config]       | KubeVirt CR LiveUpdate Strategy    | vmRolloutStrategy=LiveUpdate, maxHotplugRatio=4
+[PASS] | [Manifests]    | CPU Socket Hot-Plug Ceilings       | sockets=2 -> maxSockets=4, pod CPU limit=4
+[PASS] | [Manifests]    | Memory Hot-Plug Headroom           | guest=2Gi -> maxGuest=4Gi, pod memory limit=4608Mi
+[PASS] | [Manifests]    | Hot-Plug VM & Volume Schemas       | vm-ubuntu-hotplug-ready.yaml and hotplug-data-volume.yaml strictly valid
+[WARN] | [Runtime]      | KubeVirt Hot-Plug Precondition     | KubeVirt phase='absent' (not deployed)
+[NOT_] | [CPUHotplug]   | Live vCPU Socket Expansion         | Skipped: KubeVirt phase='absent' (not deployed)
+[NOT_] | [MemHotplug]   | Live Memory Guest Expansion        | Skipped: KubeVirt phase='absent' (not deployed)
+[NOT_] | [DiskHotplug]  | Dynamic SCSI Volume Attach/Detach  | Skipped: KubeVirt phase='absent' (not deployed)
+==============================================================================

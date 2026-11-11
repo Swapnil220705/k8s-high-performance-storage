@@ -1,0 +1,52 @@
+{
+  "metadata": {
+    "reportDate": "2026-11-11T12:07:08Z",
+    "vmi": "kubevirt-workloads/vm-ubuntu-migration-nfs",
+    "execute": false,
+    "wsl2Detected": true,
+    "summary": {
+      "pass": 2,
+      "warning": 1,
+      "fail": 0,
+      "notTestable": 3
+    }
+  },
+  "checks": [
+    {
+      "category": "Config",
+      "status": "PASS",
+      "title": "KubeVirt CR Migration Guardrails",
+      "details": "disableTLS=false, allowPostCopy=false, bandwidthPerMigration=64Mi"
+    },
+    {
+      "category": "Manifests",
+      "status": "PASS",
+      "title": "MigrationPolicy & Job Schemas",
+      "details": "MigrationPolicy and VirtualMachineInstanceMigration pass strict CRD schema validation"
+    },
+    {
+      "category": "Cluster",
+      "status": "WARNING",
+      "title": "Multi-Node Migration Precondition",
+      "details": "Cluster has 1 Ready node(s) and KubeVirt phase='absent' (requires >=2 KVM workers + KubeVirt Deployed)"
+    },
+    {
+      "category": "Migration",
+      "status": "NOT_TESTABLE",
+      "title": "Pre-Migration VMI & RWX PVC Check",
+      "details": "Skipped: Cluster has 1 Ready node(s) and KubeVirt phase='absent' (requires >=2 KVM workers + KubeVirt Deployed)"
+    },
+    {
+      "category": "Migration",
+      "status": "NOT_TESTABLE",
+      "title": "Live Memory Pre-Copy Execution",
+      "details": "Skipped: Requires >=2 Ready KVM worker nodes & live KubeVirt"
+    },
+    {
+      "category": "Migration",
+      "status": "NOT_TESTABLE",
+      "title": "Post-Migration Node Switch & Health",
+      "details": "Skipped: No live migration executed"
+    }
+  ]
+}

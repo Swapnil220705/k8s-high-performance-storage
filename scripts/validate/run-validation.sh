@@ -170,12 +170,16 @@ fi
 K8S_MANIFESTS=()
 while IFS= read -r kfile; do
     K8S_MANIFESTS+=("${kfile}")
-done < <(find "${REPO_ROOT}/infrastructure" "${REPO_ROOT}/kubevirt" "${REPO_ROOT}/storage" -type f \( -name "*.yaml" -o -name "*.yml" \) ! -name "kubeadm-init-config.yaml" ! -name "chart-metadata.yaml" ! -name "values.yaml" 2>/dev/null || true)
+done < <(find "${REPO_ROOT}/infrastructure" "${REPO_ROOT}/kubevirt" "${REPO_ROOT}/storage" -type f \( -name "*.yaml" -o -name "*.yml" \) ! -name "kubeadm-init-config.yaml" ! -name "chart-metadata.yaml" ! -name "values.yaml" ! -name "release-metadata.yaml" 2>/dev/null || true)
 
 if [[ "${#K8S_MANIFESTS[@]}" -gt 0 ]]; then
     CALICO_SCHEMA_TMPL="${REPO_ROOT}/infrastructure/k8s/calico/schemas/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json"
     MAYASTOR_SCHEMA_TMPL="${REPO_ROOT}/infrastructure/storage/mayastor/schemas/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json"
-    if ! kubeconform -strict -summary -schema-location default -schema-location "${CALICO_SCHEMA_TMPL}" -schema-location "${MAYASTOR_SCHEMA_TMPL}" "${K8S_MANIFESTS[@]}"; then
+    KUBEVIRT_SCHEMA_TMPL="${REPO_ROOT}/kubevirt/installation/schemas/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json"
+    CORE_K8S_SCHEMA_TMPL="${REPO_ROOT}/infrastructure/k8s/schemas/v1.36.6-standalone-strict/{{.ResourceKind}}{{.KindSuffix}}.json"
+    KUBECONFORM_CACHE="${HOME:-/tmp}/.cache/kubeconform"
+    mkdir -p "${KUBECONFORM_CACHE}"
+    if ! kubeconform -strict -summary -cache "${KUBECONFORM_CACHE}" -schema-location "${CALICO_SCHEMA_TMPL}" -schema-location "${MAYASTOR_SCHEMA_TMPL}" -schema-location "${KUBEVIRT_SCHEMA_TMPL}" -schema-location "${CORE_K8S_SCHEMA_TMPL}" -schema-location default "${K8S_MANIFESTS[@]}"; then
         SCHEMA_STEP_OK=false
     fi
 fi
@@ -192,6 +196,18 @@ if [[ -f "${REPO_ROOT}/infrastructure/storage/openebs/chart-metadata.yaml" ]] &&
     fi
 fi
 
+if [[ -f "${REPO_ROOT}/kubevirt/installation/release-metadata.yaml" ]]; then
+    if ! yq eval 'true' "${REPO_ROOT}/kubevirt/installation/release-metadata.yaml" >/dev/null; then
+        echo "    KubeVirt release-metadata.yaml structural parse failed" >&2
+        SCHEMA_STEP_OK=false
+    elif grep -rnE '^\s*image:\s*["'\'']?[^"'\'' ]*:latest' "${REPO_ROOT}/kubevirt" "${REPO_ROOT}/storage" 2>/dev/null; then
+        echo "    Forbidden :latest image tag detected in kubevirt/ or storage/ manifests" >&2
+        SCHEMA_STEP_OK=false
+    else
+        echo "    KubeVirt release-metadata.yaml & image pinning check [ok]"
+    fi
+fi
+
 if [[ "${SCHEMA_STEP_OK}" == true ]]; then
     log_pass "All Kubernetes and kubeadm manifests passed schema validation."
 else
@@ -205,7 +221,7 @@ log_step 7 "Validating JSON Parsing Integrity with jq"
 JSON_FILES=()
 while IFS= read -r jfile; do
     JSON_FILES+=("${jfile}")
-done < <(find "${REPO_ROOT}/reports" "${REPO_ROOT}/infrastructure" -type f -name "*.json" 2>/dev/null || true)
+done < <(find "${REPO_ROOT}/reports" "${REPO_ROOT}/infrastructure" "${REPO_ROOT}/kubevirt" -type f -name "*.json" 2>/dev/null || true)
 
 JSON_ERRORS=0
 if [[ "${#JSON_FILES[@]}" -gt 0 ]]; then
