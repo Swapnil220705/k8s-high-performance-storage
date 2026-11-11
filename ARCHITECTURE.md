@@ -2,8 +2,8 @@
 
 **Project Name:** Deploy High-Performance Storage for Kubernetes  
 **Project ID:** SWFW_5S_08  
-**Document Status:** PROPOSED (Target Architecture — Not Yet Deployed or Experimentally Validated)  
-**Last Updated:** 2026-11-05 (Chunk 2.1 Strategy Realignment & ADR-011 Decoupling)  
+**Document Status:** PROPOSED TARGET ARCHITECTURE (M2 Kubernetes & Calico Manifests Validated; Local K3s Dev Cluster Active; 4-Node Multi-Node Execution Infrastructure-Dependent)  
+**Last Updated:** 2026-11-11 (Milestone M2 Kubernetes Cluster Architecture & Local Dev Validation)  
 
 ---
 
@@ -127,6 +127,9 @@ The intended deployment separates cluster traffic into logical planes across the
 - **Node Topology:**
   - **1 Dedicated Control Plane Node (Node 0):** Hosts API server, `etcd` (Raft consensus), controller manager, scheduler, and Mayastor control plane agents.
   - **3 Dedicated Worker Nodes (Nodes 1, 2, 3):** Labeled and configured for storage and virtualization workloads (`openebs.io/engine=mayastor`, `kubevirt.io/schedulable=true`), each with 2 GiB HugePages pre-allocated and dedicated NVMe/SSD raw block devices.
+- **M2 Deliverables & Dual-Environment Reference:**
+  - Target `kubeadm` (`kubeadm.k8s.io/v1beta4`, Pod CIDR `10.244.0.0/16`, Service CIDR `10.96.0.0/12`), `containerd` v3 (`SystemdCgroup = true`), and Calico `v3.33.0` (`encapsulation: None`, BGP mesh TCP 179) specifications are documented in [`docs/kubernetes-architecture.md`](docs/kubernetes-architecture.md), [`docs/kubernetes-deployment-guide.md`](docs/kubernetes-deployment-guide.md), and [`docs/calico-networking.md`](docs/calico-networking.md).
+  - For offline local development and API verification in WSL2, a lightweight single-node **K3s `v1.36.6+k3s1`** cluster (`containerd v2.3.7-k3s1.36`, Flannel CNI) is validated in isolation from host Docker/containerd installations.
 
 ---
 

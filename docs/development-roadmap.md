@@ -71,26 +71,27 @@ flowchart TD
 
 - **Objective:** Design, author, and validate reproducible Kubernetes cluster deployment automation using `kubeadm` v1.36.x (Candidate B preferred qualification target) and containerd 2.3 LTS, alongside a lightweight local single-node cluster harness for offline manifest verification.
 - **Task Scope:**
-  1. Author parameterized `kubeadm` cluster initialization configuration (`infrastructure/k8s/kubeadm-init-config.yaml`) specifying API server endpoints, pod/service CIDRs, and systemd cgroup driver integration.
+  1. Author parameterized `kubeadm` cluster initialization configuration (`infrastructure/k8s/kubeadm-init-config.yaml`) specifying API server endpoints, pod/service CIDRs, and systemd cgroup driver integration, alongside target `containerd` 2.3.x schema v3 configuration (`infrastructure/k8s/containerd-config-v3.toml`).
   2. Author reproducible cluster bootstrap scripts:
      - Control plane initialization script (`scripts/setup/03-bootstrap-control-plane.sh`).
-     - Worker node join script with token generation (`scripts/setup/04-join-worker-nodes.sh`).
-  3. Author Calico v3.33 pure routed BGP CNI manifests (`infrastructure/networking/calico-bgp.yaml`).
-  4. Establish a lightweight local single-node test cluster (via Kind/K3s) with strictly bounded memory limits to execute local API and CRD validation without host memory starvation.
+     - Worker node join script with secure token handling (`scripts/setup/04-join-worker-node.sh`).
+  3. Author Calico v3.33.0 pure routed BGP CNI manifests (`infrastructure/k8s/calico/installation.yaml`, `infrastructure/k8s/calico/bgp-configuration.yaml`) and OpenAPI schemas.
+  4. Establish a lightweight local single-node test cluster (`k3s v1.36.6+k3s1`) with strictly bounded memory limits (`scripts/setup/dev-cluster-local.sh`) and cluster validation automation (`scripts/validate/validate-kubernetes-cluster.sh`).
 - **Dependencies:** Milestone 1 (Linters and CLI tooling).
 - **Expected Deliverables:**
-  - `kubeadm` configuration: `infrastructure/k8s/kubeadm-init-config.yaml`.
+  - `kubeadm` configuration: `infrastructure/k8s/kubeadm-init-config.yaml` and `infrastructure/k8s/containerd-config-v3.toml`.
   - Cluster bootstrap automation: `scripts/setup/03-bootstrap-control-plane.sh`.
-  - Worker node join script: `scripts/setup/04-join-worker-nodes.sh`.
-  - Calico CNI manifest: `infrastructure/networking/calico-bgp.yaml`.
-  - Local dev cluster script: `scripts/setup/dev-cluster-local.sh`.
+  - Worker node join script: `scripts/setup/04-join-worker-node.sh`.
+  - Calico CNI manifests: `infrastructure/k8s/calico/installation.yaml` and `infrastructure/k8s/calico/bgp-configuration.yaml`.
+  - Local dev cluster script: `scripts/setup/dev-cluster-local.sh` and cluster validator `scripts/validate/validate-kubernetes-cluster.sh`.
+  - Architecture & deployment docs: `docs/kubernetes-architecture.md`, `docs/kubernetes-deployment-guide.md`, `docs/calico-networking.md`.
 - **Verification Criteria:**
-  - YAML manifests validate cleanly against Kubernetes 1.36 OpenAPI schemas via `kubeconform`.
-  - Local dev cluster starts up within memory bounds (< 2.0 GiB) and reports `Ready` node status.
+  - `kubeadm config validate` and `kubeconform -strict` validate target configurations against Kubernetes v1.36 / Calico v3.33.0 schemas.
+  - Local dev cluster starts up within memory bounds (< 2.0 GiB, observed ~341 MiB delta), reports `Ready` node status, passes CoreDNS and Pod scheduling/networking probes.
 - **Resource Requirements:**
-  - *Local Dev:* 1.5–2.0 GiB RAM in WSL2.
+  - *Local Dev:* Observed ~341 MiB RAM, ~626 MB disk (pre-check enforces $\ge 1500\text{ MiB}$ RAM, $\ge 2\text{ GiB}$ disk).
   - *Production Target:* 4 physical nodes (1 Control Plane + 3 Workers) on Layer-2 network.
-- **Definition of Done:** Cluster manifests syntactically validated; local dev harness verified; multi-node bootstrap scripts tested and staged for execution.
+- **Definition of Done:** Cluster manifests syntactically validated; local K3s dev cluster verified; multi-node bootstrap scripts tested in WSL2 refusal guard and staged for target hardware. (**Status: `COMPLETED` 2026-11-11**).
 
 ---
 

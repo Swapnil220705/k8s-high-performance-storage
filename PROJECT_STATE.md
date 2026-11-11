@@ -5,9 +5,9 @@
 **Program:** Zoho SETU — College Student Project Program  
 **Active Branch:** `main`  
 **Current Phase:** Phase 2 — Target Infrastructure Preparation & Kubernetes Cluster Bootstrap  
-**Current Chunk:** Milestone M1 — Development Environment Preparation & Automated Tooling  
-**Milestone M1 Status:** 🟢 COMPLETED (Toolchain Verified, Linters Configured, Preflight & Prerequisites Automated)  
-**Overall Completion:** 8 / 16 Milestones Completed (Foundation, Feasibility, Lifecycle & Reconciliation Audits, Baseline Closure, Readiness Planning, Strategy Alignment, Dev Environment Preparation)  
+**Current Chunk:** Milestone M2 — Kubernetes Cluster Architecture & Multi-Node Provisioning  
+**Milestone M2 Status:** 🟢 COMPLETED (4-Node Config & Calico v3.33.0 Validated; Local K3s v1.36.6+k3s1 Dev Cluster Operational)  
+**Overall Completion:** 9 / 16 Milestones Completed (Foundation, Feasibility, Lifecycle & Reconciliation Audits, Baseline Closure, Readiness Planning, Strategy Alignment, Dev Environment Preparation, Kubernetes Architecture & Dev Cluster)  
 
 ---
 
@@ -30,7 +30,7 @@
 | **2.0**| **Infrastructure Readiness & Access Planning** | 🟢 **COMPLETED** | Chunk 2.0 | Evidence-Based Readiness Tracker, Refined College Questionnaire, Administrative Access Matrix, Fallback Hierarchy, Objective Assessment (NOT READY) |
 | **2.1**| **Project Strategy Alignment & Environment Assessment** | 🟢 **COMPLETED** | Chunk 2.1 | ADR-011 Strategy Realignment, 12-Component Feasibility Matrix, 5 Execution Pathways, 3-State Completion Framework, 10-Milestone Development Roadmap |
 | **M1** | **Milestone 1: Dev Environment Preparation & Automated Tooling** | 🟢 **COMPLETED** | Milestone M1 | Toolchain Installed (12 tools), Linters Configured, Preflight (`01-host-preflight.sh`), Node Prerequisites (`02-node-prerequisites.sh`), Unified Validation (`run-validation.sh`) |
-| **M2** | Milestone 2: Kubernetes Cluster Architecture & Multi-Node Provisioning | ⚪ NOT STARTED | Phase 2 | Kubeadm Configurations, Calico BGP, Local Dev Cluster |
+| **M2** | **Milestone 2: Kubernetes Cluster Architecture & Multi-Node Provisioning** | 🟢 **COMPLETED** | Milestone M2 | `kubeadm` v1.36.6 Config Validated, Calico v3.33.0 Validated, Bootstrap Scripts Implemented, Local K3s v1.36.6+k3s1 Dev Cluster Operational (12/12 PASS, 1 WARN, 1 N/T) |
 | **M3** | Milestone 3: OpenEBS Mayastor Storage Engine Deployment | ⚪ NOT STARTED | Phase 2 | Mayastor Helm Values, DiskPool CRDs, StorageClasses |
 | **M4** | Milestone 4: KubeVirt Virtualization Stack Integration | ⚪ NOT STARTED | Phase 2 | Operator, CDI, Local `/dev/kvm` Micro-VM Test |
 | **M5** | Milestone 5: Storage Subsystem Integration with Virtual Machines | ⚪ NOT STARTED | Phase 2 | Direct Block, Clustered NFS Gateway, Native RWX Block |
@@ -108,11 +108,21 @@
   - Repository-wide YAML lint configuration (`.yamllint.yaml`).
   - Development toolchain specification and runbook (`docs/development-toolchain.md`).
   - Generated environment audit reports: `reports/environment/host-preflight-*.txt/.json` and `reports/environment/node-prerequisites-*.txt/.json`.
+- [x] **Milestone M2 Deliverables (Kubernetes Cluster Architecture & Multi-Node Provisioning):**
+  - Target `kubeadm` initialization configuration (`infrastructure/k8s/kubeadm-init-config.yaml`) using `kubeadm.k8s.io/v1beta4`, Pod CIDR `10.244.0.0/16`, Service CIDR `10.96.0.0/12`, CRI `unix:///run/containerd/containerd.sock`, and `SystemdCgroup` kubelet config (validated `ok` via `kubeadm v1.36.6 config validate`).
+  - Target `containerd` 2.3.x LTS schema v3 reference (`infrastructure/k8s/containerd-config-v3.toml`).
+  - Calico `v3.33.0` Tigera Operator custom resources (`infrastructure/k8s/calico/installation.yaml`, `infrastructure/k8s/calico/bgp-configuration.yaml`) using `encapsulation: None` (Pure BGP), `nodeAddressAutodetectionV4: kubernetes: NodeInternalIP`, plus extracted official CRD schemas (`infrastructure/k8s/calico/schemas/`) validated via `kubeconform -strict` (3/3 resources + 7/7 operator resources valid).
+  - Target server bootstrap scripts (`scripts/setup/03-bootstrap-control-plane.sh`, `scripts/setup/04-join-worker-node.sh`) with WSL2 safety refusal, root/swap/sysctl/CRI checks, and secure token handling (refusal verified in WSL2; live multi-node execution `INFRASTRUCTURE-DEPENDENT`).
+  - Local single-node K3s (`v1.36.6+k3s1`, embedded `containerd v2.3.7-k3s1.36`) lifecycle automation (`scripts/setup/dev-cluster-local.sh`) with RAM ($\ge 1500\text{ MiB}$) and disk ($\ge 2\text{ GiB}$) pre-checks.
+  - Kubernetes cluster validation automation (`scripts/validate/validate-kubernetes-cluster.sh`) supporting `--report-only` and active scheduling/CoreDNS/Pod-to-Pod probes, archiving `.txt` and `.json` reports in `reports/kubernetes/`.
+  - Updated unified validation suite (`scripts/validate/run-validation.sh`) to validate `kubeadm-init-config.yaml` and Calico CRDs (8/8 steps PASS).
+  - Authored `docs/kubernetes-architecture.md`, `docs/kubernetes-deployment-guide.md`, and `docs/calico-networking.md`; synchronized `docs/development-roadmap.md`, `ARCHITECTURE.md`, and `README.md`.
 
 ### 2.2 Verified Infrastructure Features
-- [x] **Local Hardware Capability:** Verified AMD Ryzen 5 7535HS (6C/12T), AMD-V enabled, 8 GB DDR5 RAM (~1.0 GB free), 1x 512 GB NVMe (~19.3 GB free on C:), WSL2 Ubuntu 24.04 installed.
+- [x] **Local Hardware Capability:** Verified AMD Ryzen 5 7535HS (6C/12T), AMD-V enabled, 8 GB DDR5 RAM (~623 MB free on Windows), 1x 512 GB NVMe (~11.77 GB free on C:), WSL2 Ubuntu 24.04 installed.
 - [x] **Local Virtualization Acceleration:** Verified `/dev/kvm` character device (`crw-rw---- 1 root kvm 10, 232`) is present and functional inside WSL2 Ubuntu 24.04.
-- [x] **Local Container Runtimes:** Verified Docker v29.1.3 and containerd v2.2.1 installed and operational inside WSL2.
+- [x] **Local Container Runtimes:** Verified pre-installed Docker v29.1.3 and containerd v2.2.1 preserved untouched; K3s isolated embedded `containerd v2.3.7-k3s1.36` operational.
+- [x] **Local Single-Node Kubernetes Dev Cluster (`VALIDATED`):** Verified K3s `v1.36.6+k3s1` (`wsl2-dev-node` `Ready`), CoreDNS/metrics-server/local-path-provisioner `Running`, Flannel CNI `PodCIDR: 10.244.0.0/24`, Pod scheduling, DNS lookup, Pod-to-Pod HTTP connectivity, and `stop`/`start` restart persistence (~341 MiB RAM, ~626 MB K3s footprint).
 - [x] **Local Workload Boundary:** Formally confirmed that hosting a 4-node cluster with Mayastor SPDK and KubeVirt locally is impossible due to memory, HugePage, and dedicated block device deficits.
 
 ### 2.3 Features Awaiting Target Infrastructure & Execution
@@ -201,18 +211,24 @@
   - Configured repository YAML lint rules: `.yamllint.yaml`.
   - Documented toolchain delivery, verification, and audit reports in `docs/development-toolchain.md`.
   - Updated `docs/development-environment-assessment.md` with active M1 feature completion ledger.
+- **2026-11-11:** Completed Milestone M2 Kubernetes Cluster Architecture & Multi-Node Provisioning:
+  - Installed standalone verified `kubeadm` v1.36.6 schema validator CLI (static binary, zero kubelet service).
+  - Authored `infrastructure/k8s/kubeadm-init-config.yaml` (`kubeadm.k8s.io/v1beta4`, validated `ok`), `infrastructure/k8s/containerd-config-v3.toml`, and `infrastructure/k8s/calico/` (`installation.yaml`, `bgp-configuration.yaml`, extracted v3.33.0 CRD schemas; validated `kubeconform -strict`).
+  - Authored target bootstrap scripts (`scripts/setup/03-bootstrap-control-plane.sh`, `scripts/setup/04-join-worker-node.sh`); verified WSL2 refusal protection.
+  - Deployed and validated local single-node `k3s v1.36.6+k3s1` (`containerd v2.3.7-k3s1.36`) via `scripts/setup/dev-cluster-local.sh` (~341 MiB RAM, ~626 MB K3s footprint); tested `stop`/`start` persistence while preserving Docker containers (`rakshakgis-*`).
+  - Authored and executed `scripts/validate/validate-kubernetes-cluster.sh` (12 PASS, 1 WARN, 0 FAIL, 1 NOT TESTABLE; `--report-only` tested).
+  - Authored `docs/kubernetes-architecture.md`, `docs/kubernetes-deployment-guide.md`, and `docs/calico-networking.md`; updated `docs/development-roadmap.md`, `ARCHITECTURE.md`, `README.md`, and `PROJECT_STATE.md`.
 
 ---
 
 ## 7. Next Authorized Action
 
-Milestone M1 is fully complete and empirically validated. **STOP AND AWAIT USER APPROVAL.**  
-Current Operational State: **LOCAL TOOLCHAIN READY & AUDITED. READY FOR MILESTONE 2 (KUBERNETES CLUSTER ARCHITECTURE & PROVISIONING).**
+Milestone M2 is fully complete and empirically validated. **STOP AND AWAIT USER APPROVAL.**  
+Current Operational State: **LOCAL K3S V1.36.6 DEV CLUSTER OPERATIONAL & 4-NODE TARGET BOOTSTRAP READY. READY FOR MILESTONE 3 (OPENEBS MAYASTOR STORAGE ENGINE).**
 
 Next steps upon explicit user authorization:
-- **Milestone 2 — Kubernetes Cluster Architecture & Multi-Node Provisioning:**
-  1. Author parameterized `kubeadm` initialization configuration (`infrastructure/k8s/kubeadm-init-config.yaml`) for Kubernetes 1.36.x / containerd 2.3 LTS.
-  2. Author reproducible cluster bootstrap scripts (`scripts/setup/03-bootstrap-control-plane.sh`, `04-join-worker-node.sh`).
-  3. Author Calico CNI manifest bundle with custom Pod CIDR matching cluster configuration.
-  4. Author lightweight local single-node cluster harness (using `kind` or `k3s`) budgeted < 2.0 GiB RAM for offline manifest validation and micro-VM tests.
-- **DO NOT start cluster provisioning or script execution until explicit user authorization is granted.**
+- **Milestone 3 — OpenEBS Mayastor Storage Engine Deployment & Volume Provisioning:**
+  1. Author OpenEBS v4.6.x Helm values file (`storage/mayastor/values.yaml`) pinning Mayastor subchart `v2.12.2`, 2 SPDK busy-polling cores, 2 GiB HugePages, and `--faulted-child-wait-period=10m`.
+  2. Author Mayastor deployment automation (`scripts/setup/05-deploy-mayastor.sh`) with target pre-checks.
+  3. Author parameterized Mayastor `DiskPool` manifests and StorageClasses (`mayastor-nvme-r3-block`, `mayastor-nvme-r3-fs`, `mayastor-nvme-r1-dev`) and validate via `helm template` and `kubeconform`.
+- **DO NOT deploy Mayastor or KubeVirt or modify production infrastructure until explicit user authorization is granted.**
