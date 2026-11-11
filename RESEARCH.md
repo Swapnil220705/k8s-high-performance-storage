@@ -175,3 +175,15 @@
 - **Official Documentation:** [Kubeconform](https://github.com/yannh/kubeconform) | [KubeVirt on Kind](https://kubevirt.io/user-guide/operations/installation/)
 - **Important Implementation Questions:** How can KubeVirt's `virt-handler` be configured within a lightweight dev container to reliably access `/dev/kvm` without host memory exhaustion?
 - **Research Status:** Local environment verified in Chunk 2.1 (2026-11-05). `/dev/kvm` confirmed active in WSL2 Ubuntu 24.04; Docker v29.1 and containerd v2.2.1 detected. Manifest linting and micro-VM test harness integrated into Milestone 1 and 2.
+
+---
+
+## 24. Milestone M3 Empirical Chart & Source Findings (`openebs 4.6.2` / `mayastor v2.12.2`)
+- **Verified Upstream Repository Mapping (2026-11-11):** `helm search repo openebs/openebs` confirms umbrella chart version **`4.6.2`** packages subchart `mayastor` **`2.12.2`** (`docker.io/openebs/mayastor-*:v2.12.2`), `etcd:3.6.4-debian-12-r0`, `nats:2.9.17-alpine`, and `provisioner-localpv:4.6.0` (used exclusively for `mayastor-etcd-localpv`).
+- **CSI Driver Provisioner & Parameters (`control-plane/csi-driver` at `v2.12.2`):**
+  - Provisioner identifier (`utils::csi_plugin_name`): `io.openebs.csi-mayastor`.
+  - Validated `StorageClass` parameters include `protocol`, `repl`, `fsType`, `rwxBlock`, `nvmeIoTimeout`, `nvmeCtrlLossTmo`, `nvmeReconnectDelay`, `nvmeNrIoQueues`, `nvmeKeepAliveTmo`, `poolAffinityTopologyLabel`, `poolHasTopologyKey`, `encrypted`, and `snapshotRestorePolicy`.
+  - Confirmed **no `thin` parameter exists** in `v2.12.2` CSI `Parameters`; overcommit/thin-provisioning is controlled globally under `agents.core.capacity.thin.*` in `infrastructure/storage/openebs/values.yaml`.
+  - Native Mayastor `ReadWriteMany` rejects `Filesystem` PVCs and enforces both `rwxBlock: "true"` and `volumeMode: Block`.
+- **DiskPool Schema (`openebs.io/v1beta3`):** Verified exact `DiskPoolSpec` struct (`node`, `disks`, `topology.labelled`, `encryptionConfig.source.secret.name`, `clusterSize`, `maxExpansion`) from `k8s/operators/src/pool/diskpool/crd/v1beta3.rs` into offline strict schema `infrastructure/storage/mayastor/schemas/openebs.io/diskpool_v1beta3.json`.
+- **Compatibility Boundary:** Upstream Mayastor `v2.12.2` automated E2E CI testing ends at Kubernetes `v1.35.6`; static Helm rendering passed against Kubernetes `v1.36.6+k3s1`, while live runtime behavior on `1.36.x` remains `INFRASTRUCTURE-DEPENDENT`.

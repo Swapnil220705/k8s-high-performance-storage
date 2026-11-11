@@ -275,3 +275,18 @@
   - *Negative:* Full-scale bare-metal NVMe benchmarks and multi-node live migration remain marked `INFRASTRUCTURE-DEPENDENT` until remote cluster execution occurs.
 - **Validation Evidence:**  
   Documented in `docs/development-environment-assessment.md` and `docs/development-roadmap.md`.
+
+---
+
+## ADR-012: OpenEBS 4.6.2 / Mayastor v2.12.2 Umbrella Scoping, v1beta3 DiskPool Schema & CSI Parameter Enforcement
+- **Status:** `ACCEPTED (Milestone M3 — Verified Against Upstream Chart & Source 2026-11-11)`
+- **Date:** 2026-11-11
+- **Context:** Milestone M3 translates the Mayastor architecture (ADRs 003, 006, 008, 010) into production-oriented Helm values, Kubernetes manifests, StorageClasses, DiskPools, and validation/deployment scripts. Inspection of `openebs/openebs` chart `4.6.2` and upstream `openebs/mayastor-control-plane` tag `v2.12.2` revealed several concrete implementation facts requiring explicit design decisions.
+- **Decisions Made:**
+  1. **Pinned Umbrella Chart (`4.6.2`) & Subchart (`2.12.2`):** Pin `openebs/openebs` chart `4.6.2` (`infrastructure/storage/openebs/chart-metadata.yaml`, `values.yaml`), bundling `mayastor` `2.12.2` across control plane, `io-engine`, `csi-controller`, `csi-node`, and `operator-diskpool`, with zero `:latest` image tags. Record explicitly that upstream Mayastor `v2.12.2` CI E2E testing covers through Kubernetes `v1.35.6`, while live deployment on Candidate B (`v1.36.x`) remains `INFRASTRUCTURE-DEPENDENT`.
+  2. **Selective Engine & Telemetry Scoping:** Explicitly disable unused `engines.local.{lvm,zfs,rawfile}` and heavy bundled logging/telemetry (`loki`, `alloy`, `mayastor.obs.callhome`). Intentionally retain `engines.local.hostpath.enabled=true` (with `localpv-provisioner.hostpathClass.enabled=false`) solely because Mayastor's internal 3-node `etcd` StatefulSet binds `mayastor-etcd-localpv` (`openebs.io/local`).
+  3. **Canonical CSI Parameters (`io.openebs.csi-mayastor`):** Omit undocumented/non-existent `thin` StorageClass parameters after verifying `control-plane/csi-driver/src/context.rs` (`v2.12.2`); thin-provisioning overcommit is governed globally via `agents.core.capacity.thin.*` in `values.yaml`. Enforce explicit `rwxBlock: "true"` alongside `volumeMode: Block` for experimental RWX StorageClass `mayastor-nvme-r3-block-rwx`, keeping general `RWX` Filesystem separate (M4/M5 Ganesha NFS gateway).
+  4. **Local Strict `DiskPool` (`openebs.io/v1beta3`) Schema & Non-Destructive Pool Policy:** Derived `infrastructure/storage/mayastor/schemas/openebs.io/diskpool_v1beta3.json` from `v1beta3.rs` so `kubeconform -strict` validates CR manifests offline. Parameterized `<WORKER_NODE_1..3>` and `/dev/disk/by-id/<RAW_NVME_BY_ID_WORKER_1..3>` placeholders ensure zero risk of wiping unconfirmed disks; `05-deploy-mayastor.sh` never auto-applies `diskpools.yaml` and unconditionally refuses live execution on WSL2.
+  5. **Upstream `hugepages-1Gi` Null-Value Quirk:** Leave `io_engine.resources.requests.hugepages1Gi` / `limits.hugepages1Gi` omitted in `values.yaml` (preserving upstream chart output validated by live Kubernetes `v1.36.6` server dry-run, because setting empty string `""` fails API Quantity regex validation).
+- **Consequences:** Static validation (`helm lint`, `helm template`, `kubeconform -strict`) and WSL2 safety-gate testing run cleanly offline without overclaiming multi-node empirical execution.
+- **References:** `infrastructure/storage/openebs/values.yaml`, `infrastructure/storage/openebs/chart-metadata.yaml`, `infrastructure/storage/mayastor/schemas/openebs.io/diskpool_v1beta3.json`, `docs/mayastor-architecture.md`.

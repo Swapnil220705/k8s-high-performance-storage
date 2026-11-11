@@ -4,7 +4,7 @@
 **Program:** Zoho SETU — College Student Project Program  
 **Category:** Cloud Infrastructure / Kubernetes / Virtualization / Distributed Storage / Systems Engineering  
 **Repository Branch:** `main`  
-**Status:** In Progress (Phase 2 — Target Infrastructure Preparation; Milestone M2 Kubernetes Cluster Architecture & Local Dev Cluster Complete)  
+**Status:** In Progress (Phase 2 — Target Infrastructure Preparation; Milestone M3 OpenEBS Mayastor Storage Engine & Volume Provisioning Complete)  
 
 ---
 
@@ -20,7 +20,7 @@ Modern cloud-native environments increasingly converge containerized microservic
 This project investigates, designs, deploys, and benchmarks a high-performance cloud-native storage architecture centered on **OpenEBS Mayastor**, leveraging the **Storage Performance Development Kit (SPDK)** and **NVMe over Fabrics (NVMe-oF)** to service **KubeVirt** virtual machine workloads on a multi-node Kubernetes cluster.
 
 > [!IMPORTANT]
-> **Project Phase & Strategic Alignment (ADR-011):** This project has completed **Phase 1 Infrastructure Discovery (Chunks 0 through 1.11)**, **Chunk 2.0 Readiness Planning**, **Chunk 2.1 Strategy Realignment**, **Milestone M1 Development Environment Preparation & Automated Tooling**, and **Milestone M2 Kubernetes Cluster Architecture & Multi-Node Provisioning**. In accordance with **ADR-011**, the complete 4-node Mayastor/KubeVirt architecture remains fully preserved as the target specification, while development and validation proceed decoupled from institutional hardware gating in accordance with the 10-milestone roadmap ([`docs/development-roadmap.md`](docs/development-roadmap.md)). Local K3s single-node validation is empirical on WSL2; multi-node bootstrap, Calico BGP mesh, Mayastor, and KubeVirt remain `INFRASTRUCTURE-DEPENDENT` until target deployment.
+> **Project Phase & Strategic Alignment (ADR-011):** This project has completed **Phase 1 Infrastructure Discovery (Chunks 0 through 1.11)**, **Chunk 2.0 Readiness Planning**, **Chunk 2.1 Strategy Realignment**, **Milestone M1 Development Environment Preparation & Automated Tooling**, **Milestone M2 Kubernetes Cluster Architecture & Multi-Node Provisioning**, and **Milestone M3 OpenEBS Mayastor Storage Engine & Volume Provisioning**. In accordance with **ADR-011**, the complete 4-node Mayastor/KubeVirt architecture remains fully preserved as the target specification, while development and validation proceed decoupled from institutional hardware gating per the 10-milestone roadmap ([`docs/development-roadmap.md`](docs/development-roadmap.md)). Local K3s single-node validation (`v1.36.6+k3s1`) and static/Helm/schema checks (`openebs 4.6.2` / Mayastor `2.12.2`) are empirical on WSL2; multi-node bootstrap, Calico BGP mesh, live Mayastor SPDK/NVMe-oF pools, and KubeVirt remain `INFRASTRUCTURE-DEPENDENT` until target deployment.
 
 ---
 
@@ -48,7 +48,7 @@ Enterprise workloads demanding virtualization within Kubernetes require storage 
 | **Cluster Orchestration** | Kubernetes (`kubeadm`) | v1.36.x (Candidate B preferred) / v1.35.x (Candidate A comparison) | Core container orchestration and resource scheduling |
 | **Container Runtime** | `containerd` | v2.3.x LTS | OCI-compliant container runtime officially recommended for K8s 1.36+ |
 | **Cluster Networking** | Calico v3.33 (CNI) | Pure routed BGP mode | Pod-to-Pod and Node-to-Pod networking fabric without VXLAN overhead |
-| **Storage Engine** | OpenEBS Mayastor | OpenEBS v4.6.x (Mayastor subchart v2.12.2) | SPDK-based high-performance distributed block storage engine (Ports 8420 & 4421; canonical 20-port matrix) |
+| **Storage Engine** | OpenEBS Mayastor | `openebs/openebs` v4.6.2 (Mayastor v2.12.2) | SPDK-based high-performance distributed block storage engine (Ports 8420 & 4421; canonical 20-port matrix) |
 | **I/O Acceleration** | SPDK (User Space) | Integrated with Mayastor | Polled-mode NVMe driver (2 dedicated cores), zero-copy user-space I/O pipeline |
 | **Storage Protocol** | NVMe-oF (TCP) | NVMe over Fabrics | High-throughput, low-latency block transport across cluster nodes |
 | **Virtualization Layer** | KubeVirt | v1.9.x (or v1.8.x) | Kubernetes CRD controller managing QEMU/KVM VM pods |
@@ -114,22 +114,22 @@ flowchart TD
 
 All capabilities below represent project targets and will be updated as implementation proceeds:
 
-| # | Capability Area | Specific Target Feature | Verification Status | Implementation Phase |
+| # | Capability Area | Specific Target Feature | Verification Status (3-State) | Implementation Phase |
 | :-: | :--- | :--- | :---: | :---: |
-| 1 | **Cluster Core** | Multi-node `kubeadm` Kubernetes deployment | ⏳ NOT STARTED | Chunk 1–2 |
-| 2 | **Storage Engine** | OpenEBS Mayastor installation & HugePages config | ⏳ NOT STARTED | Chunk 3 |
-| 3 | **Storage Pools** | Multi-node `DiskPool` provisioning across raw disks | ⏳ NOT STARTED | Chunk 3 |
-| 4 | **Replication** | Synchronous 2-way and 3-way volume replication | ⏳ NOT STARTED | Chunk 3–4 |
-| 5 | **Virtualization** | KubeVirt Operator and CRD deployment | ⏳ NOT STARTED | Chunk 5 |
-| 6 | **VM Workloads** | Cloud-init guest VM launch backed by Mayastor PV | ⏳ NOT STARTED | Chunk 5 |
-| 7 | **Live Migration** | VM migration across workers without service drop | ⏳ NOT STARTED | Chunk 6 |
-| 8 | **CPU Hot-Plug** | Dynamic vCPU scaling on running KubeVirt VM | ⏳ NOT STARTED | Chunk 7 |
-| 9 | **Memory Hot-Plug** | Dynamic memory allocation adjustment on guest VM | ⏳ NOT STARTED | Chunk 7 |
-| 10 | **Storage Hot-Plug** | Attaching secondary block volume to active VM | ⏳ NOT STARTED | Chunk 7 |
-| 11 | **NIC Hot-Plug** | Attaching dynamic Multus secondary interface | ⏳ NOT STARTED | Chunk 7 |
-| 12 | **Benchmarking** | Matrix testing using `fio` across R/W profiles | ⏳ NOT STARTED | Chunk 8 |
-| 13 | **Failure Recovery** | Degraded pool rebuild and node offline failover | ⏳ NOT STARTED | Chunk 9 |
-| 14 | **Observability** | Real-time dashboards for IOPS, latency, and health | ⏳ NOT STARTED | Chunk 10 |
+| 1 | **Cluster Core** | Multi-node `kubeadm` + Calico Kubernetes deployment | 🛠️ `IMPLEMENTED` / 🧪 Local K3s `v1.36.6` `VALIDATED` / 🔒 4-node `INFRASTRUCTURE-DEPENDENT` | M2 |
+| 2 | **Storage Engine** | OpenEBS `4.6.2` / Mayastor `2.12.2` deployment & HugePages validation | 🛠️ `IMPLEMENTED` / 🧪 Chart/Schema/Refusal `VALIDATED` / 🔒 Live SPDK `INFRASTRUCTURE-DEPENDENT` | M3 |
+| 3 | **Storage Pools** | Multi-node `DiskPool` (`openebs.io/v1beta3`) across raw NVMe | 🛠️ `IMPLEMENTED` / 🧪 CRD Schema `VALIDATED` / 🔒 Hardware `INFRASTRUCTURE-DEPENDENT` | M3 |
+| 4 | **Replication** | Synchronous 3-way NVMe-oF TCP StorageClasses & integrity verification | 🛠️ `IMPLEMENTED` / 🧪 Static CSI `VALIDATED` / 🔒 Multi-Node `INFRASTRUCTURE-DEPENDENT` | M3 |
+| 5 | **Virtualization** | KubeVirt Operator and CRD deployment | ⏳ NOT STARTED | M4 |
+| 6 | **VM Workloads** | Cloud-init guest VM launch backed by Mayastor PV | ⏳ NOT STARTED | M4–M5 |
+| 7 | **Live Migration** | VM migration across workers without service drop | ⏳ NOT STARTED | M6 |
+| 8 | **CPU Hot-Plug** | Dynamic vCPU scaling on running KubeVirt VM | ⏳ NOT STARTED | M6 |
+| 9 | **Memory Hot-Plug** | Dynamic memory allocation adjustment on guest VM | ⏳ NOT STARTED | M6 |
+| 10 | **Storage Hot-Plug** | Attaching secondary block volume to active VM | ⏳ NOT STARTED | M6 |
+| 11 | **NIC Hot-Plug** | Attaching dynamic Multus secondary interface | ⏳ NOT STARTED | M6 |
+| 12 | **Benchmarking** | Matrix testing using `fio` across R/W profiles | ⏳ NOT STARTED | M7–M8 |
+| 13 | **Failure Recovery** | Degraded pool rebuild and node offline failover | ⏳ NOT STARTED | M7 |
+| 14 | **Observability** | Real-time dashboards for IOPS, latency, and health | ⏳ NOT STARTED | M8 |
 
 ---
 
@@ -227,36 +227,39 @@ Development follows a strict **hybrid infrastructure model**:
 ### Infrastructure Discovery & Feasibility Reports (Chunk 1 Deliverables)
 - [Local Infrastructure Inventory (docs/infrastructure-inventory.md)](docs/infrastructure-inventory.md): Hardware detection, memory limitations, and WSL2 assessment on the dev laptop.
 - [College Infrastructure Questionnaire (docs/college-infrastructure-questionnaire.md)](docs/college-infrastructure-questionnaire.md): Formal inquiry and hardware sizing for lab administrators.
-- [Software Version Compatibility Matrix (docs/compatibility-matrix.md)](docs/compatibility-matrix.md): Lifecycle research establishing supported modern baseline (Ubuntu 24.04 LTS, K8s 1.35.x, OpenEBS 4.6+, KubeVirt 1.8.x).
+- [Software Version Compatibility Matrix (docs/compatibility-matrix.md)](docs/compatibility-matrix.md): Lifecycle research establishing Candidate B (`Ubuntu 24.04 LTS`, `K8s 1.36.x`, `containerd 2.3.x LTS`, `OpenEBS 4.6.2` / `Mayastor 2.12.2`, `KubeVirt 1.9.x`, `Calico 3.33`).
 - [Storage Architecture Analysis (docs/storage-architecture-analysis.md)](docs/storage-architecture-analysis.md): RWO vs. RWX evaluation, Mayastor SPDK volume pipeline, and dual-tier storage strategy.
-- [Network & Virtualization Requirements (docs/network-and-virtualization-requirements.md)](docs/network-and-virtualization-requirements.md): 15 verified ports, network topology, and hardware KVM pass-through requirements.
+- [Network & Virtualization Requirements (docs/network-and-virtualization-requirements.md)](docs/network-and-virtualization-requirements.md): Canonical 20-port audit, network topology, and hardware KVM pass-through requirements.
 - [Deployment Options Evaluation (docs/deployment-options.md)](docs/deployment-options.md): Comparative evaluation of physical servers, lab PCs, hypervisor nested VMs, and cloud options.
 - [Final Deployment Proposal (docs/final-deployment-proposal.md)](docs/final-deployment-proposal.md): Complete research-backed engineering blueprint for cluster deployment.
 
+### Milestone M2–M3 Implementation Guides
+- [Kubernetes Deployment Guide (docs/kubernetes-deployment-guide.md)](docs/kubernetes-deployment-guide.md): 4-node `kubeadm` + Calico BGP bootstrap and WSL2 single-node K3s verification workflow.
+- [Mayastor Storage Architecture (docs/mayastor-architecture.md)](docs/mayastor-architecture.md): OpenEBS `4.6.2` / Mayastor `v2.12.2` chart layout, CSI `StorageClass` specs, `DiskPool` (`v1beta3`) design, and compatibility boundaries.
+- [Mayastor Networking Design (docs/mayastor-networking.md)](docs/mayastor-networking.md): NVMe-oF TCP ports (`10124`, `8420`, `4421`), Calico data-path flow, and MTU/rebuild window tuning.
+- [Mayastor Testing Plan (docs/mayastor-testing-plan.md)](docs/mayastor-testing-plan.md): Two-tier verification protocol (static/WSL2 checks vs. live 4-node NVMe integrity testing).
+
 ---
 
-## 9. Future Implementation Roadmap
+## 9. Implementation Roadmap
 
 ```mermaid
 flowchart LR
-    C0["Chunk 0<br/>Foundation & Governance"] --> C1["Chunk 1<br/>Target Infra & Linux"]
-    C1 --> C2["Chunk 2<br/>K8s Multi-Node Cluster"]
-    C2 --> C3["Chunk 3<br/>OpenEBS Mayastor"]
-    C3 --> C4["Chunk 4<br/>Storage Replication"]
-    C4 --> C5["Chunk 5<br/>KubeVirt Integration"]
-    C5 --> C6["Chunk 6<br/>Live Migration"]
-    C6 --> C7["Chunk 7<br/>Resource Hot-Plugging"]
-    C7 --> C8["Chunk 8<br/>FIO Benchmarking"]
-    C8 --> C9["Chunk 9<br/>Failure Recovery"]
-    C9 --> C10["Chunk 10<br/>Observability"]
-    C10 --> C11["Chunk 11<br/>Final Evaluation"]
+    P1["Phase 1<br/>Chunks 0-2.1"] --> M1["M1: Dev Tooling<br/>& Preflight"]
+    M1 --> M2["M2: K8s Cluster<br/>& Calico"]
+    M2 --> M3["M3: OpenEBS<br/>Mayastor Engine"]
+    M3 --> M4["M4: KubeVirt<br/>& Guest VMs"]
+    M4 --> M5["M5: Storage Tiers<br/>& NFS Gateway"]
+    M5 --> M6["M6: Live Migration<br/>& Hot-Plugging"]
+    M6 --> M7["M7: Fault & Rebuild<br/>Drills"]
+    M7 --> M8["M8: FIO &<br/>Observability"]
+    M8 --> M9["M9-M10: Report<br/>& Defense"]
 
     classDef done fill:#2da44e,stroke:#1b7c3a,color:#fff;
-    classDef current fill:#0969da,stroke:#0550ae,color:#fff;
     classDef pending fill:#8c959f,stroke:#6e7781,color:#fff;
 
-    class C0 current;
-    class C1,C2,C3,C4,C5,C6,C7,C8,C9,C10,C11 pending;
+    class P1,M1,M2,M3 done;
+    class M4,M5,M6,M7,M8,M9 pending;
 ```
 
-*Current Phase: Chunk 0 (In Progress). All downstream chunks remain locked pending explicit review and approval.*
+*Current Phase: Milestone M3 Completed (Implemented & Statically/Safety Validated; Live Multi-Node NVMe Execution Pending Target Hardware). Next Authorized Milestone: M4 — KubeVirt Installation & Virtual Machine Provisioning (awaiting user authorization).*

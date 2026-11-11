@@ -4,10 +4,10 @@
 **Project ID:** SWFW_5S_08  
 **Program:** Zoho SETU — College Student Project Program  
 **Active Branch:** `main`  
-**Current Phase:** Phase 2 — Target Infrastructure Preparation & Kubernetes Cluster Bootstrap  
-**Current Chunk:** Milestone M2 — Kubernetes Cluster Architecture & Multi-Node Provisioning  
-**Milestone M2 Status:** 🟢 COMPLETED (4-Node Config & Calico v3.33.0 Validated; Local K3s v1.36.6+k3s1 Dev Cluster Operational)  
-**Overall Completion:** 9 / 16 Milestones Completed (Foundation, Feasibility, Lifecycle & Reconciliation Audits, Baseline Closure, Readiness Planning, Strategy Alignment, Dev Environment Preparation, Kubernetes Architecture & Dev Cluster)  
+**Current Phase:** Phase 2 — Target Infrastructure Preparation & Distributed Storage Engine  
+**Current Chunk:** Milestone M3 — OpenEBS Mayastor Storage Engine & Volume Provisioning  
+**Milestone M3 Status:** 🟢 COMPLETED (OpenEBS 4.6.2 / Mayastor 2.12.2 Configured & Statically/Safety Validated; Live SPDK & Multi-Node NVMe-oF Pools INFRASTRUCTURE-DEPENDENT)  
+**Overall Completion:** 10 / 16 Milestones Completed (Foundation, Feasibility, Lifecycle & Reconciliation Audits, Baseline Closure, Readiness Planning, Strategy Alignment, Dev Environment Preparation, Kubernetes Architecture & Dev Cluster, OpenEBS Mayastor Storage Engine)  
 
 ---
 
@@ -31,7 +31,7 @@
 | **2.1**| **Project Strategy Alignment & Environment Assessment** | 🟢 **COMPLETED** | Chunk 2.1 | ADR-011 Strategy Realignment, 12-Component Feasibility Matrix, 5 Execution Pathways, 3-State Completion Framework, 10-Milestone Development Roadmap |
 | **M1** | **Milestone 1: Dev Environment Preparation & Automated Tooling** | 🟢 **COMPLETED** | Milestone M1 | Toolchain Installed (12 tools), Linters Configured, Preflight (`01-host-preflight.sh`), Node Prerequisites (`02-node-prerequisites.sh`), Unified Validation (`run-validation.sh`) |
 | **M2** | **Milestone 2: Kubernetes Cluster Architecture & Multi-Node Provisioning** | 🟢 **COMPLETED** | Milestone M2 | `kubeadm` v1.36.6 Config Validated, Calico v3.33.0 Validated, Bootstrap Scripts Implemented, Local K3s v1.36.6+k3s1 Dev Cluster Operational (12/12 PASS, 1 WARN, 1 N/T) |
-| **M3** | Milestone 3: OpenEBS Mayastor Storage Engine Deployment | ⚪ NOT STARTED | Phase 2 | Mayastor Helm Values, DiskPool CRDs, StorageClasses |
+| **M3** | **Milestone 3: OpenEBS Mayastor Storage Engine Deployment** | 🟢 **COMPLETED** | Milestone M3 | OpenEBS `4.6.2` / Mayastor `2.12.2` Values, `DiskPool v1beta3` Schema, StorageClasses, Prereq/Deploy/Validation Automation & Docs (`8/8` validation pass + WSL2 refusal verified) |
 | **M4** | Milestone 4: KubeVirt Virtualization Stack Integration | ⚪ NOT STARTED | Phase 2 | Operator, CDI, Local `/dev/kvm` Micro-VM Test |
 | **M5** | Milestone 5: Storage Subsystem Integration with Virtual Machines | ⚪ NOT STARTED | Phase 2 | Direct Block, Clustered NFS Gateway, Native RWX Block |
 | **M6** | Milestone 6: VM Live Migration & Runtime Resource Hot-Plugging | ⚪ NOT STARTED | Phase 3 | Single-Writer Verification Harness, 6-Scenario Suite, Hot-Plug |
@@ -223,8 +223,8 @@
 
 ## 7. Next Authorized Action
 
-Milestone M2 is fully complete and empirically validated. **STOP AND AWAIT USER APPROVAL.**  
-Current Operational State: **LOCAL K3S V1.36.6 DEV CLUSTER OPERATIONAL & 4-NODE TARGET BOOTSTRAP READY. READY FOR MILESTONE 3 (OPENEBS MAYASTOR STORAGE ENGINE).**
+Milestone M3 is fully implemented, statically validated (`8/8` validation suite, `helm lint`, `helm template` zero `:latest` audit, `DiskPool v1beta3` `kubeconform -strict`), and safety-verified on WSL2 (live deployment refusal + non-destructive prerequisite/deployment reporting). **STOP AND AWAIT USER APPROVAL.**  
+Current Operational State: **OPENEBS 4.6.2 / MAYASTOR 2.12.2 ARTIFACTS IMPLEMENTED & STATICALLY/SAFETY VALIDATED; LIVE 3-WORKER SPDK/NVME-OF DEPLOYMENT INFRASTRUCTURE-DEPENDENT. READY FOR MILESTONE 4 (KUBEVIRT & VM PROVISIONING) UPON APPROVAL.**
 
 Next steps upon explicit user authorization:
 - **Milestone 3 — OpenEBS Mayastor Storage Engine Deployment & Volume Provisioning:**
@@ -232,3 +232,25 @@ Next steps upon explicit user authorization:
   2. Author Mayastor deployment automation (`scripts/setup/05-deploy-mayastor.sh`) with target pre-checks.
   3. Author parameterized Mayastor `DiskPool` manifests and StorageClasses (`mayastor-nvme-r3-block`, `mayastor-nvme-r3-fs`, `mayastor-nvme-r1-dev`) and validate via `helm template` and `kubeconform`.
 - **DO NOT deploy Mayastor or KubeVirt or modify production infrastructure until explicit user authorization is granted.**
+
+---
+
+### Milestone M3 Completion Record (OpenEBS Mayastor Storage Engine & Volume Provisioning — 2026-11-11)
+- **Milestone Status:** `🟢 COMPLETED` (**10/16 milestones** completed: Chunks 0, 1, 1.8, 1.9, 1.10, 1.11, 2.0, 2.1, M1, M2, M3)
+- **Recorded Git Commits (Local `main`, unpushed):**
+  - `f044b3d` — `feat(storage): add pinned OpenEBS 4.6.2 Mayastor 2.12.2 config, DiskPool v1beta3 schema, and StorageClasses`
+  - `777e328` — `feat(validate): add non-destructive Mayastor prerequisite validator, safe deployer, and deployment validator`
+  - Plus `docs(m3)` documentation & project state synchronization commit.
+- **Version Baseline & Gap Honesty:** Pinned `openebs/openebs` **`4.6.2`** bundling **`mayastor` `2.12.2`** (zero `:latest` image tags; unused LVM/ZFS/rawfile/Loki/Alloy/callhome disabled; internal `localpv-provisioner:4.6.0` retained exclusively for `mayastor-etcd-localpv`). Recorded explicitly that upstream Mayastor `v2.12.2` CI E2E coverage ends at Kubernetes `v1.35.6`, leaving Candidate B (`v1.36.6+`) live execution explicitly classified `INFRASTRUCTURE-DEPENDENT`.
+- **Artifacts Created / Modified:**
+  - OpenEBS Helm config & scoping: `infrastructure/storage/openebs/{chart-metadata.yaml,namespace.yaml,values.yaml}`
+  - Pool & CSI definitions: `infrastructure/storage/mayastor/{node-scheduling-configmap.yaml,diskpools.yaml,schemas/openebs.io/diskpool_v1beta3.json}`
+  - StorageClasses, PVCs & verification workload: `infrastructure/storage/examples/{storageclasses.yaml,pvc-replicated-r3.yaml,pod-verify-integrity.yaml}`
+  - Automation & validators: `scripts/validate/validate-mayastor-prerequisites.sh`, `scripts/setup/05-deploy-mayastor.sh`, `scripts/validate/validate-mayastor-deployment.sh`, updated `scripts/validate/run-validation.sh`
+  - Documentation & ADR: `docs/mayastor-architecture.md`, `docs/mayastor-networking.md`, `docs/mayastor-testing-plan.md`, `DECISIONS.md` (`ADR-012`), synchronized `ARCHITECTURE.md`, `README.md`, `docs/development-environment-assessment.md`, `docs/development-roadmap.md`, `PROJECT_STATE.md`
+  - Empirical Tier-1/WSL2 reports archived: `reports/storage/mayastor-prerequisites-2026-11-11_11-15-43.{txt,json}` and `reports/storage/mayastor-deployment-validation-2026-11-11_11-16-16.{txt,json}`
+- **Three-State Completion Breakdown:**
+  - `IMPLEMENTED`: OpenEBS `4.6.2` chart config (`mayastor` `2.12.2`), `DiskPool v1beta3` schema & parameterized manifests, 4 StorageClasses (`mayastor-nvme-r3-ext4`, `r3-block`, experimental `r3-block-rwx`, `r1-dev`), PVC/Pod SHA-256 verification specs, prerequisite & deployment automation scripts, and M3 docs.
+  - `VALIDATED` (Local/Static & Safety): `helm lint` (`0 failed`), `helm template` zero `:latest` image audit & `io-engine` flag inspection, `run-validation.sh` **`8/8 PASS`** (`ShellCheck`, `shfmt -i 4`, `yamllint` 12 files, `kubeconform -strict` 16/16 resources including `DiskPool` schema, `jq` 9/9 JSONs), `05-deploy-mayastor.sh --dry-run` PASS, `05-deploy-mayastor.sh` LIVE WSL2 safety refusal PASS (`exit 1`), non-destructive `validate-mayastor-prerequisites.sh` PASS on WSL2 (`11 PASS / 4 WARN / 6 FAIL / 1 N/T`, expected `exit 1`), and `validate-mayastor-deployment.sh` honest `WARNING + NOT_TESTABLE` detection (`0 PASS / 1 WARN / 0 FAIL / 8 N/T`, `--require-deployed` `exit 1`).
+  - `INFRASTRUCTURE-DEPENDENT`: Live 3-worker `io-engine` SPDK startup (`2Gi` `2MiB` HugePages + 2 pinned cores/node), physical NVMe `DiskPool` Online convergence, `mayastor-etcd-localpv` binding, live `io.openebs.csi-mayastor` NVMe-oF TCP provisioning, cross-node I/O, and K8s `1.36` runtime qualification.
+- **Next Authorized Action:** **STOPPED after M3.** Await explicit user review and authorization before starting **Milestone M4 — KubeVirt Installation & Virtual Machine Provisioning**.

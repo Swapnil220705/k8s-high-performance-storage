@@ -419,3 +419,13 @@
 - **Viva / Evaluation Questions:**
   1. *Why are latency histograms preferable to simple counter averages when monitoring storage I/O performance?*
   2. *What is the performance overhead of Prometheus scraping on storage-critical worker nodes, and how can it be minimized?*
+
+---
+
+## 22. Milestone M3 Field Engineering Notes (OpenEBS 4.6.2 / Mayastor v2.12.2)
+- **Why Internal `etcd` Needs `localpv-provisioner` Even When LVM/ZFS Are Disabled:** Mayastor stores pool, replica, and nexus topology metadata in its own dedicated 3-replica `openebs-etcd` StatefulSet decoupled from Kubernetes' cluster etcd. By default (`storageClass: mayastor-etcd-localpv`, `openebs.io/local`), those etcd PVCs bind via `provisioner-localpv`. Keeping `engines.local.hostpath.enabled=true` with `localpv-provisioner.hostpathClass.enabled=false` satisfies internal etcd persistence without exposing a generic `hostpath` user StorageClass.
+- **Why Static CR Validation Uses Local JSON Schemas:** Because `mayastor-operator-diskpool` installs/reconciles the `diskpools.openebs.io` CRD dynamically, offline `kubeconform -strict` needs [`diskpool_v1beta3.json`](infrastructure/storage/mayastor/schemas/openebs.io/diskpool_v1beta3.json) (compiled from `v1beta3.rs`) to catch `DiskPool` typos before cluster deployment.
+- **Why `validate-mayastor-prerequisites.sh` Uses Read-Only `lsblk`:** Never rely on `/dev/nvme0n1` naming guesses or blind `wipefs`. Even unmounted disks can hold existing WSL virtual filesystems or partition tables (`fstype`/`pttype`), so inspect `lsblk -J` fields non-destructively and require persistent `/dev/disk/by-id/` identifiers plus institutional confirmation before `DiskPool` creation.
+- **Viva Questions (M3):**
+  1. *Why must `hugepages1Gi` remain omitted rather than empty string `""` in upstream `openebs 4.6.2` `values.yaml`?* (`""` fails Kubernetes resource `Quantity` parsing on API validation, whereas omitted renders YAML null tolerated by kube-apiserver.)
+  2. *What two conditions must both hold for Mayastor v2.12.2 CSI to allow a `ReadWriteMany` PVC?* (`StorageClass` parameter `rwxBlock: "true"` AND `PersistentVolumeClaim` `spec.volumeMode: Block`; general `RWX` `Filesystem` uses M4/M5 Ganesha NFS gateway.)

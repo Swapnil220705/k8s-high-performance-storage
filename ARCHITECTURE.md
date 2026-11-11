@@ -294,3 +294,14 @@ To provide empirical evidence and validate architectural claims, an integrated P
 | **KubeVirt VM Launch** | KubeVirt runs Linux guest OS inside QEMU pods with hardware `/dev/kvm`. | Ubuntu 24.04 cloud images booted from Mayastor PV. | Driver compatibility between guest OS and NVMe-attached virtio-scsi/virtio-blk. |
 | **Native RWX Migration** | Native RWX block volume supported in OpenEBS v4.6.x (Mayastor subchart v2.12.2). | Multi-attach NVMe-oF evaluated across 6 live-migration scenarios. | Edge cases during inter-node network partitions; experimental status. |
 | **Hot-Plugging** | KubeVirt supports CPU, memory, volume, and interface hot-plug. | Scripted test harness evaluating guest kernel event recognition. | Guest kernel ACPI responsiveness without VM reboot. |
+
+---
+
+## 9. Milestone M3 Implementation Architecture Reference (OpenEBS 4.6.2 / Mayastor v2.12.2)
+
+Milestone M3 materializes Section 5 (Distributed Storage Engine) into version-pinned declarative manifests and automated gates while preserving complete M4–M10 downstream separation:
+
+- **Namespace & Umbrella Chart Configuration:** `infrastructure/storage/openebs/{namespace.yaml,chart-metadata.yaml,values.yaml}` (`openebs/openebs` `4.6.2` bundling `mayastor` `v2.12.2`, 2-core SPDK `io-engine`, `2Gi` `2MiB` HugePages, NVMe-oF TCP ports `10124`/`8420`/`4421`, `--faulted-child-wait-period=10m`, internal `mayastor-etcd-localpv` enabled without public `hostpath` class, `loki`/`alloy`/`callhome`/`lvm`/`zfs`/`rawfile` disabled).
+- **Storage Pools & Schema Validation:** `infrastructure/storage/mayastor/{node-scheduling-configmap.yaml,diskpools.yaml}` (`openebs.io/v1beta3` `DiskPool`) validated locally via `infrastructure/storage/mayastor/schemas/openebs.io/diskpool_v1beta3.json`.
+- **CSI StorageClasses & Integrity Verification (`io.openebs.csi-mayastor`):** `infrastructure/storage/examples/{storageclasses.yaml,pvc-replicated-r3.yaml,pod-verify-integrity.yaml}` (`mayastor-nvme-r3-ext4`, `mayastor-nvme-r3-block`, experimental `mayastor-nvme-r3-block-rwx` with `rwxBlock: "true"`, and baseline `mayastor-nvme-r1-dev`).
+- **Operational & Validation Automation:** `scripts/validate/validate-mayastor-prerequisites.sh`, `scripts/setup/05-deploy-mayastor.sh` (`--dry-run` + WSL2/prerequisite hard refusal), and `scripts/validate/validate-mayastor-deployment.sh`. Detailed architecture, networking, and testing runbooks reside in `docs/mayastor-architecture.md`, `docs/mayastor-networking.md`, and `docs/mayastor-testing-plan.md`. Note: OpenEBS `v2.12.2` upstream E2E qualification stops at Kubernetes `v1.35.6`, while live execution on Candidate B (`v1.36.x`) remains `INFRASTRUCTURE-DEPENDENT`.

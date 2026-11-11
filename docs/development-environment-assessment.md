@@ -211,6 +211,13 @@ For every major project capability, the project maintains:
 | **Node Prerequisite Detection** (`02-node-prerequisites.sh`) | **`IMPLEMENTED`** | **`VALIDATED`** | `LOCAL (WSL2)` | Executed in report-only mode; generated `reports/environment/node-prerequisites-*.txt` and `.json` (10 MET, 5 WARN, 0 UNMET). | HugePages allocation (1024 pages) and secondary raw disk configuration remain infrastructure-dependent. |
 | **Hardware KVM Character Device** (`/dev/kvm`) | **`IMPLEMENTED`** | **`VALIDATED`** | `LOCAL (WSL2)` | Inspected via preflight and node prerequisite audits; character device mode `10, 232` confirmed. | Unprivileged local user requires `kvm` group membership; full KubeVirt virt-handler validation scheduled in M4. |
 
+### 4.3 Milestone M2 & M3 Feature Status Summary
+
+| Feature / Subsystem | Implementation Status | Validation Status | Environment Scope | Test Procedure & Verification Evidence | Known Limitations / Remaining Work |
+| :--- | :---: | :---: | :---: | :--- | :--- |
+| **Multi-Node K8s & Calico Manifests / Bootstrap (`M2`)** | **`IMPLEMENTED`** | **`PARTIALLY VALIDATED`** | `INFRASTRUCTURE-DEPENDENT` (4-node) / `LOCAL` (K3s `v1.36.6`) | `run-validation.sh` (`kubeadm config validate`, `kubeconform`), WSL2 safety refusal on `03`/`04`, single-node K3s `validate-kubernetes-cluster.sh` archived in `reports/kubernetes/`. | Full 4-node `kubeadm` cluster bootstrap and Calico BGP mesh require target Ubuntu servers. |
+| **OpenEBS 4.6.2 / Mayastor 2.12.2 Helm & CR Manifests (`M3`)** | **`IMPLEMENTED`** | **`PARTIALLY VALIDATED`** | `LOCAL` (Helm/Schema) / `INFRASTRUCTURE-DEPENDENT` (Live Data Plane) | `helm lint`, `helm template` zero `:latest` image audit, `kubeconform -strict` with `diskpool_v1beta3.json`, `05-deploy-mayastor.sh --dry-run` & WSL2 live refusal, `validate-mayastor-prerequisites.sh` & `validate-mayastor-deployment.sh` archived in `reports/storage/`. | WSL2 lacks 2Gi HugePages, raw NVMe drives, and 3 workers; live NVMe-oF I/O and `DiskPool` online validation await 4-node hardware. |
+
 ---
 
 ## 5. Strategic Summary & Next Action

@@ -332,7 +332,7 @@ flowchart TD
 | :---: | :--- | :--- | :--- | :--- | :---: |
 | **M1** | **Dev Environment & Tooling** | Full execution (WSL2 tools, linters, preflight) | Remote preflight execution | `01-host-preflight.sh`, linters | Phase 2 |
 | **M2** | **Kubernetes Cluster Setup** | Schema linting, local dev cluster harness | 4-node `kubeadm` bootstrap | `kubeadm-init-config.yaml`, Calico BGP | Phase 2 |
-| **M3** | **Mayastor Storage Engine** | Helm values, DiskPool CRDs, StorageClasses | Live 3-worker SPDK deployment | `storageclasses.yaml`, `values.yaml` | Phase 2 |
+| **M3** | **Mayastor Storage Engine** | Helm values (`openebs 4.6.2` / `2.12.2`), `DiskPool v1beta3` schema, StorageClasses, prereq/deploy/validation scripts & docs (`COMPLETED 2026-11-11`) | Live 3-worker SPDK deployment & NVMe-oF I/O | `values.yaml`, `diskpools.yaml`, `storageclasses.yaml`, `05-deploy-mayastor.sh` | Phase 2 |
 | **M4** | **KubeVirt & VM Lifecycle** | Local `/dev/kvm` micro-VM test, CRD validation | Production 4 GiB Ubuntu VM | `production-vm-ubuntu.yaml`, lifecycle script | Phase 2 |
 | **M5** | **Storage & VM Integration** | 3-tier manifest authoring, NFS gateway test | Direct NVMe block VM binding | Block/NFS/RWX VM manifests | Phase 2 |
 | **M6** | **Live Migration & Hot-Plug** | Single-writer harness unit tests, hot-plug scripts | 6-scenario live migration drill | `test-single-writer-concurrency.py`, hotplug | Phase 3 |
