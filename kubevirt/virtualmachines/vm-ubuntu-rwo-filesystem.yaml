@@ -1,0 +1,109 @@
+---
+# Secondary ReadWriteOnce Filesystem PVC backed by 3-replica Mayastor NVMe-oF TCP.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ubuntu-rwo-fs-data
+  namespace: kubevirt-workloads
+  labels:
+    app.kubernetes.io/name: vm-ubuntu-rwo-fs
+    app.kubernetes.io/component: vm-data-disk
+    app.kubernetes.io/part-of: k8s-high-performance-storage
+spec:
+  accessModes:
+    - ReadWriteOnce
+  volumeMode: Filesystem
+  storageClassName: mayastor-nvme-r3-ext4
+  resources:
+    requests:
+      storage: 10Gi
+---
+# Standard Linux VM backed by ReadWriteOnce Filesystem Storage (CDI DataVolume + Mayastor PVC).
+# Access-mode limitation: RWO volumes bind exclusively to a single node initiator; KubeVirt marks
+# this VM non-migratable (`evictionStrategy: None`). Use vm-ubuntu-migration-nfs for live migration.
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: vm-ubuntu-rwo-fs
+  namespace: kubevirt-workloads
+  labels:
+    app.kubernetes.io/name: vm-ubuntu-rwo-fs
+    app.kubernetes.io/component: virtual-machine
+    app.kubernetes.io/part-of: k8s-high-performance-storage
+    kubevirt.io/storage-tier: rwo-filesystem
+spec:
+  runStrategy: Always
+  dataVolumeTemplates:
+    - metadata:
+        name: ubuntu-rwo-fs-root
+      spec:
+        source:
+          registry:
+            url: "docker://quay.io/containerdisks/ubuntu:24.04-2610180208"
+        pvc:
+          accessModes:
+            - ReadWriteOnce
+          volumeMode: Filesystem
+          storageClassName: mayastor-nvme-r3-ext4
+          resources:
+            requests:
+              storage: 20Gi
+  template:
+    metadata:
+      labels:
+        kubevirt.io/domain: vm-ubuntu-rwo-fs
+        app.kubernetes.io/part-of: k8s-high-performance-storage
+    spec:
+      evictionStrategy: None
+      terminationGracePeriodSeconds: 120
+      nodeSelector:
+        kubernetes.io/os: linux
+        kubernetes.io/arch: amd64
+      domain:
+        machine:
+          type: q35
+        cpu:
+          cores: 2
+          sockets: 1
+          threads: 1
+        memory:
+          guest: 4Gi
+        resources:
+          requests:
+            cpu: "2"
+            memory: 4Gi
+          limits:
+            cpu: "4"
+            memory: 4608Mi
+        devices:
+          rng: {}
+          disks:
+            - name: rootdisk
+              bootOrder: 1
+              disk:
+                bus: virtio
+            - name: datadisk
+              disk:
+                bus: virtio
+            - name: cloudinitdisk
+              disk:
+                bus: virtio
+          interfaces:
+            - name: default
+              masquerade: {}
+      networks:
+        - name: default
+          pod: {}
+      volumes:
+        - name: rootdisk
+          dataVolume:
+            name: ubuntu-rwo-fs-root
+        - name: datadisk
+          persistentVolumeClaim:
+            claimName: ubuntu-rwo-fs-data
+        - name: cloudinitdisk
+          cloudInitNoCloud:
+            secretRef:
+              name: ubuntu-vm-cloudinit
+            networkDataSecretRef:
+              name: ubuntu-vm-cloudinit

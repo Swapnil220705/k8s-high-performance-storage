@@ -1,0 +1,43 @@
+# ==============================================================================
+# KubeVirt & CDI Pinned Version & Compatibility Metadata
+# Project: Deploy High-Performance Storage for Kubernetes (SWFW_5S_08)
+# Verification Date: 2026-11-11 (Upstream GitHub releases & go.mod audited)
+# ==============================================================================
+metadata:
+  verificationDate: "2026-11-11"
+  targetKubernetesBaseline: "v1.36.6"
+  targetContainerdBaseline: "2.3.x LTS"
+  kubevirt:
+    version: "v1.9.1"
+    publishedAt: "2026-10-12T14:57:24Z"
+    supportedKubernetesWindow: ">=1.35 <1.37"
+    virtctlClientInstalled: "v1.9.0"
+    virtctlSkewNote: "virtctl v1.9.0 (installed in M1) operates within the v1.9.x minor series; operators may upgrade virtctl to v1.9.1 for exact patch parity."
+    operatorManifestUrl: "https://github.com/kubevirt/kubevirt/releases/download/v1.9.1/kubevirt-operator.yaml"
+    crManifestUrl: "https://github.com/kubevirt/kubevirt/releases/download/v1.9.1/kubevirt-cr.yaml"
+    featureGateNotes:
+      - "LiveMigration: GA (always enabled in v1.9.1; omit from featureGates)"
+      - "VMLiveUpdateFeatures: GA since v1.5.0 (enabled via vmRolloutStrategy: LiveUpdate)"
+      - "HotplugVolumes: GA (imperative virtctl addvolume/removevolume enabled by default)"
+      - "DeclarativeHotplugVolumes: Beta (enabled by default in v1.9.1)"
+      - "HotplugNICs & VMExport: GA in v1.9.x"
+  cdi:
+    version: "v1.66.1"
+    publishedAt: "2026-09-06T17:13:14Z"
+    previousDraftRange: "v1.61.x"
+    upgradeJustification: >-
+      CDI v1.61.5 (March 2025, k8s.io/api v0.30.2) predated Kubernetes 1.36 and KubeVirt 1.9;
+      CDI v1.66.1 (September 2026, k8s.io/api v0.31.5) aligns with KubeVirt v1.9.1 and fixes 4k block imports.
+    operatorManifestUrl: "https://github.com/kubevirt/containerized-data-importer/releases/download/v1.66.1/cdi-operator.yaml"
+    crManifestUrl: "https://github.com/kubevirt/containerized-data-importer/releases/download/v1.66.1/cdi-cr.yaml"
+  nfsFallbackProvisioner:
+    chart: "csi-driver-nfs"
+    targetVersion: "4.9.0"
+    provisioner: "nfs.csi.k8s.io"
+    role: "Default safe ReadWriteMany Filesystem fallback tier backed by Mayastor RWO storage for live migration."
+  wsl2Boundaries:
+    localCluster: "K3s v1.36.6+k3s1 single-node (3515 MiB total RAM, ~2.4 GiB free)"
+    kvmDevice: "/dev/kvm present (crw-rw---- root:kvm), ioctl probe requires kvm group or privileged container"
+    limitations:
+      - "Live KubeVirt + CDI + 4 GiB VM workloads + multi-node live migration cannot be validated on single-node 3.5 GiB WSL2."
+      - "Multi-node worker migration tests and Mayastor-backed DataVolumes remain INFRASTRUCTURE-DEPENDENT."

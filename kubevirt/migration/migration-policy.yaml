@@ -1,0 +1,42 @@
+---
+# Default Live Migration Policy for Standards-Compliant NFS RWX Virtual Machines.
+# Guarantees TLS encryption (per KubeVirt CR), conservative pre-copy auto-converge,
+# and disabled post-copy (avoiding split-brain or VM crash on transient link drops).
+apiVersion: migrations.kubevirt.io/v1alpha1
+kind: MigrationPolicy
+metadata:
+  name: default-nfs-rwx-migration-policy
+  labels:
+    app.kubernetes.io/name: kubevirt-migration
+    app.kubernetes.io/component: migration-policy
+    app.kubernetes.io/part-of: k8s-high-performance-storage
+spec:
+  allowAutoConverge: true
+  allowPostCopy: false
+  allowWorkloadDisruption: false
+  bandwidthPerMigration: "64Mi"
+  completionTimeoutPerGiB: 800
+  selectors:
+    virtualMachineInstanceSelector:
+      kubevirt.io/migration-tier: default-nfs-rwx
+---
+# Opt-in Migration Policy for Experimental Native Mayastor RWX Raw Block Evaluations.
+apiVersion: migrations.kubevirt.io/v1alpha1
+kind: MigrationPolicy
+metadata:
+  name: experimental-rwx-block-migration-policy
+  labels:
+    app.kubernetes.io/name: kubevirt-migration
+    app.kubernetes.io/component: migration-policy
+    app.kubernetes.io/part-of: k8s-high-performance-storage
+  annotations:
+    storage.k8s.io/maturity: "experimental"
+spec:
+  allowAutoConverge: true
+  allowPostCopy: false
+  allowWorkloadDisruption: false
+  bandwidthPerMigration: "128Mi"
+  completionTimeoutPerGiB: 600
+  selectors:
+    virtualMachineInstanceSelector:
+      kubevirt.io/migration-tier: experimental-rwx-block

@@ -1,0 +1,93 @@
+---
+# EXPERIMENTAL NATIVE MAYASTOR RWX RAW BLOCK VM WORKLOAD (OPT-IN RESEARCH ONLY)
+# CRITICAL WARNINGS:
+#   1. NOT the default migration baseline. Default safe migration uses nfs-mayastor-rwx.
+#   2. Upstream Mayastor v2.12.2 classifies RWX raw block (`rwxBlock: "true"`) as EXPERIMENTAL.
+#   3. Strictly requires `volumeMode: Block` and `mayastor-nvme-r3-block-rwx`; RWX Filesystem is
+#      rejected by io.openebs.csi-mayastor.
+#   4. Mayastor provides no distributed lock manager; safety relies on QEMU/KubeVirt single-writer
+#      pre-copy serialization and requires M6 multi-layer concurrency verification before claims.
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: vm-ubuntu-rwx-block-exp
+  namespace: kubevirt-workloads
+  labels:
+    app.kubernetes.io/name: vm-ubuntu-rwx-block-exp
+    app.kubernetes.io/component: virtual-machine-experimental-rwx
+    app.kubernetes.io/part-of: k8s-high-performance-storage
+    kubevirt.io/storage-tier: experimental-rwx-block
+  annotations:
+    storage.k8s.io/maturity: "experimental"
+    description: "Experimental native Mayastor RWX raw Block VM for controlled single-writer live-migration research"
+spec:
+  runStrategy: Manual
+  dataVolumeTemplates:
+    - metadata:
+        name: ubuntu-rwx-block-exp-root
+      spec:
+        source:
+          registry:
+            url: "docker://quay.io/containerdisks/ubuntu:24.04-2610180208"
+        pvc:
+          accessModes:
+            - ReadWriteMany
+          volumeMode: Block
+          storageClassName: mayastor-nvme-r3-block-rwx
+          resources:
+            requests:
+              storage: 20Gi
+  template:
+    metadata:
+      labels:
+        kubevirt.io/domain: vm-ubuntu-rwx-block-exp
+        kubevirt.io/migration-tier: experimental-rwx-block
+        app.kubernetes.io/part-of: k8s-high-performance-storage
+    spec:
+      evictionStrategy: LiveMigrate
+      terminationGracePeriodSeconds: 180
+      nodeSelector:
+        kubernetes.io/os: linux
+        kubernetes.io/arch: amd64
+      domain:
+        machine:
+          type: q35
+        cpu:
+          cores: 2
+          sockets: 1
+          threads: 1
+        memory:
+          guest: 4Gi
+        resources:
+          requests:
+            cpu: "2"
+            memory: 4Gi
+          limits:
+            cpu: "4"
+            memory: 4608Mi
+        devices:
+          rng: {}
+          disks:
+            - name: rootdisk
+              bootOrder: 1
+              disk:
+                bus: virtio
+            - name: cloudinitdisk
+              disk:
+                bus: virtio
+          interfaces:
+            - name: default
+              masquerade: {}
+      networks:
+        - name: default
+          pod: {}
+      volumes:
+        - name: rootdisk
+          dataVolume:
+            name: ubuntu-rwx-block-exp-root
+        - name: cloudinitdisk
+          cloudInitNoCloud:
+            secretRef:
+              name: ubuntu-vm-cloudinit
+            networkDataSecretRef:
+              name: ubuntu-vm-cloudinit

@@ -1,0 +1,45 @@
+---
+# Secondary Mayastor 3-Replica Filesystem PVC staged for dynamic hot-plug attachment:
+#   virtctl addvolume vm-ubuntu-hotplug -n kubevirt-workloads --volume-name=hotplug-extra-disk-01 --persist
+# Rollback / Detach:
+#   virtctl removevolume vm-ubuntu-hotplug -n kubevirt-workloads --volume-name=hotplug-extra-disk-01
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: hotplug-extra-disk-01
+  namespace: kubevirt-workloads
+  labels:
+    app.kubernetes.io/name: hotplug-extra-disk-01
+    app.kubernetes.io/component: hotplug-storage
+    app.kubernetes.io/part-of: k8s-high-performance-storage
+spec:
+  accessModes:
+    - ReadWriteOnce
+  volumeMode: Filesystem
+  storageClassName: mayastor-nvme-r3-ext4
+  resources:
+    requests:
+      storage: 5Gi
+---
+# Secondary CDI Blank DataVolume staged for raw Block hot-plug testing (`volumeMode: Block`):
+#   virtctl addvolume vm-ubuntu-hotplug -n kubevirt-workloads --volume-name=hotplug-extra-block-02 --persist
+apiVersion: cdi.kubevirt.io/v1beta1
+kind: DataVolume
+metadata:
+  name: hotplug-extra-block-02
+  namespace: kubevirt-workloads
+  labels:
+    app.kubernetes.io/name: hotplug-extra-block-02
+    app.kubernetes.io/component: hotplug-storage-block
+    app.kubernetes.io/part-of: k8s-high-performance-storage
+spec:
+  source:
+    blank: {}
+  pvc:
+    accessModes:
+      - ReadWriteOnce
+    volumeMode: Block
+    storageClassName: mayastor-nvme-r3-block
+    resources:
+      requests:
+        storage: 5Gi

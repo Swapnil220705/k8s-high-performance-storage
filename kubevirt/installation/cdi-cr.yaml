@@ -1,0 +1,31 @@
+---
+# Containerized Data Importer (CDI) Custom Resource (cdi.kubevirt.io/v1beta1)
+# Target Release: CDI v1.66.1 (aligned with KubeVirt v1.9.1 & Kubernetes v1.36.x)
+apiVersion: cdi.kubevirt.io/v1beta1
+kind: CDI
+metadata:
+  name: cdi
+  labels:
+    app.kubernetes.io/name: cdi
+    app.kubernetes.io/instance: cdi
+    app.kubernetes.io/component: image-importer
+    app.kubernetes.io/part-of: k8s-high-performance-storage
+    app.kubernetes.io/version: "v1.66.1"
+spec:
+  imagePullPolicy: IfNotPresent
+  infra:
+    nodeSelector:
+      kubernetes.io/os: linux
+  config:
+    featureGates:
+      - HonorWaitForFirstConsumer
+    filesystemOverhead:
+      global: "0.055"
+    scratchSpaceStorageClass: "mayastor-nvme-r3-ext4"
+    podResourceRequirements:
+      requests:
+        cpu: "100m"
+        memory: "128Mi"
+      limits:
+        cpu: "500m"
+        memory: "512Mi"

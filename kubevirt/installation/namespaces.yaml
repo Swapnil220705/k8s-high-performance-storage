@@ -1,0 +1,42 @@
+---
+# KubeVirt control/data plane namespace (virt-handler requires privileged access to /dev/kvm & libvirt)
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kubevirt
+  labels:
+    app.kubernetes.io/name: kubevirt
+    app.kubernetes.io/part-of: k8s-high-performance-storage
+    app.kubernetes.io/version: "v1.9.1"
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/audit: privileged
+    pod-security.kubernetes.io/warn: privileged
+---
+# Containerized Data Importer (CDI) namespace for disk image import/cloning pods
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cdi
+  labels:
+    app.kubernetes.io/name: cdi
+    app.kubernetes.io/part-of: k8s-high-performance-storage
+    app.kubernetes.io/version: "v1.66.1"
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/audit: privileged
+    pod-security.kubernetes.io/warn: privileged
+---
+# Isolated namespace for KubeVirt VirtualMachine & live-migration workloads
+# KubeVirt v1.9 NonRoot GA runs virt-launcher QEMU processes without host root UID.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kubevirt-workloads
+  labels:
+    app.kubernetes.io/name: kubevirt-workloads
+    app.kubernetes.io/part-of: k8s-high-performance-storage
+    pod-security.kubernetes.io/enforce: baseline
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: baseline

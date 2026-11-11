@@ -1,0 +1,88 @@
+---
+# DEFAULT SAFE LIVE-MIGRATABLE VM WORKLOAD
+# Uses standards-compliant ReadWriteMany (RWX) Filesystem storage (`nfs-mayastor-rwx`)
+# exported from Mayastor RWO backing storage via csi-driver-nfs v4.9.0.
+# Do NOT confuse with experimental native Mayastor RWX block mode.
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: vm-ubuntu-migration-nfs
+  namespace: kubevirt-workloads
+  labels:
+    app.kubernetes.io/name: vm-ubuntu-migration-nfs
+    app.kubernetes.io/component: virtual-machine-migratable
+    app.kubernetes.io/part-of: k8s-high-performance-storage
+    kubevirt.io/storage-tier: default-nfs-rwx
+  annotations:
+    description: "Default live-migratable Ubuntu 24.04 VM backed by RWX Filesystem over Mayastor"
+spec:
+  runStrategy: Always
+  dataVolumeTemplates:
+    - metadata:
+        name: ubuntu-migration-nfs-root
+      spec:
+        source:
+          registry:
+            url: "docker://quay.io/containerdisks/ubuntu:24.04-2610180208"
+        pvc:
+          accessModes:
+            - ReadWriteMany
+          volumeMode: Filesystem
+          storageClassName: nfs-mayastor-rwx
+          resources:
+            requests:
+              storage: 20Gi
+  template:
+    metadata:
+      labels:
+        kubevirt.io/domain: vm-ubuntu-migration-nfs
+        kubevirt.io/migration-tier: default-nfs-rwx
+        app.kubernetes.io/part-of: k8s-high-performance-storage
+    spec:
+      evictionStrategy: LiveMigrate
+      terminationGracePeriodSeconds: 180
+      nodeSelector:
+        kubernetes.io/os: linux
+        kubernetes.io/arch: amd64
+      domain:
+        machine:
+          type: q35
+        cpu:
+          cores: 2
+          sockets: 1
+          threads: 1
+        memory:
+          guest: 4Gi
+        resources:
+          requests:
+            cpu: "2"
+            memory: 4Gi
+          limits:
+            cpu: "4"
+            memory: 4608Mi
+        devices:
+          rng: {}
+          disks:
+            - name: rootdisk
+              bootOrder: 1
+              disk:
+                bus: virtio
+            - name: cloudinitdisk
+              disk:
+                bus: virtio
+          interfaces:
+            - name: default
+              masquerade: {}
+      networks:
+        - name: default
+          pod: {}
+      volumes:
+        - name: rootdisk
+          dataVolume:
+            name: ubuntu-migration-nfs-root
+        - name: cloudinitdisk
+          cloudInitNoCloud:
+            secretRef:
+              name: ubuntu-vm-cloudinit
+            networkDataSecretRef:
+              name: ubuntu-vm-cloudinit

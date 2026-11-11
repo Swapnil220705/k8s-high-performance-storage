@@ -1,0 +1,56 @@
+---
+# Constrained Lightweight CirrOS Test VM (256Mi RAM, Manual RunStrategy).
+# Purpose: Minimal KVM hardware acceleration & virtctl console/lifecycle check on small lab nodes.
+# Note: Still requires live KubeVirt control plane (`virt-api`/`virt-controller`/`virt-handler`),
+# which is NOT auto-deployed to WSL2 (3.5 GiB total RAM) to avoid host destabilization.
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: vm-cirros-dev-minimal
+  namespace: kubevirt-workloads
+  labels:
+    app.kubernetes.io/name: vm-cirros-dev-minimal
+    app.kubernetes.io/component: virtual-machine-minimal
+    app.kubernetes.io/part-of: k8s-high-performance-storage
+spec:
+  runStrategy: Manual
+  template:
+    metadata:
+      labels:
+        kubevirt.io/domain: vm-cirros-dev-minimal
+        app.kubernetes.io/part-of: k8s-high-performance-storage
+    spec:
+      evictionStrategy: None
+      terminationGracePeriodSeconds: 30
+      nodeSelector:
+        kubernetes.io/os: linux
+        kubernetes.io/arch: amd64
+      domain:
+        cpu:
+          cores: 1
+        memory:
+          guest: 256Mi
+        resources:
+          requests:
+            cpu: "250m"
+            memory: 256Mi
+          limits:
+            cpu: "1"
+            memory: 512Mi
+        devices:
+          disks:
+            - name: containerdisk
+              bootOrder: 1
+              disk:
+                bus: virtio
+          interfaces:
+            - name: default
+              masquerade: {}
+      networks:
+        - name: default
+          pod: {}
+      volumes:
+        - name: containerdisk
+          containerDisk:
+            image: "quay.io/kubevirt/cirros-container-disk-demo:20261111_6cefb75928-amd64"
+            imagePullPolicy: IfNotPresent

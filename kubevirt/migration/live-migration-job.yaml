@@ -1,0 +1,18 @@
+---
+# Declarative Live Migration Job for the Default RWX NFS-Backed Ubuntu VM.
+# Equivalent CLI trigger: `virtctl migrate vm-ubuntu-migration-nfs -n kubevirt-workloads`
+# Prerequisite: >=2 Ready KVM worker nodes with >=15 GiB spare RAM (32 GB preferred/node).
+apiVersion: kubevirt.io/v1
+kind: VirtualMachineInstanceMigration
+metadata:
+  name: vm-ubuntu-migration-nfs-01
+  namespace: kubevirt-workloads
+  labels:
+    app.kubernetes.io/name: vm-ubuntu-migration-nfs
+    app.kubernetes.io/component: live-migration
+    app.kubernetes.io/part-of: k8s-high-performance-storage
+spec:
+  vmiName: vm-ubuntu-migration-nfs
+  # Optional node selector to steer target placement deterministically during lab demos:
+  # addedNodeSelector:
+  #   kubernetes.io/hostname: "<WORKER_NODE_2>"

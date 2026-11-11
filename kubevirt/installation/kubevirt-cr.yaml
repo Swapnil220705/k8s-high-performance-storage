@@ -1,0 +1,58 @@
+---
+# KubeVirt Custom Resource (kubevirt.io/v1) for KubeVirt v1.9.1
+# Note: In KubeVirt v1.9.1, LiveMigration, VMLiveUpdateFeatures, HotplugVolumes, and HotplugNICs
+# are GA (always active) and DeclarativeHotplugVolumes is Beta (enabled by default).
+# Passing retired GA gates in developerConfiguration.featureGates triggers deprecation warnings.
+apiVersion: kubevirt.io/v1
+kind: KubeVirt
+metadata:
+  name: kubevirt
+  namespace: kubevirt
+  labels:
+    app.kubernetes.io/name: kubevirt
+    app.kubernetes.io/instance: kubevirt
+    app.kubernetes.io/component: hypervisor-control-plane
+    app.kubernetes.io/part-of: k8s-high-performance-storage
+    app.kubernetes.io/version: "v1.9.1"
+spec:
+  certificateRotateStrategy: {}
+  imagePullPolicy: IfNotPresent
+  infra:
+    replicas: 2
+    nodePlacement:
+      nodeSelector:
+        kubernetes.io/os: linux
+  customizeComponents: {}
+  workloadUpdateStrategy:
+    workloadUpdateMethods:
+      - LiveMigrate
+      - Evict
+  configuration:
+    # GA live update strategy allowing CPU socket & memory hot-plugging without reboot
+    vmRolloutStrategy: LiveUpdate
+    liveUpdateConfiguration:
+      maxHotplugRatio: 4
+      maxCpuSockets: 8
+      maxGuest: "16Gi"
+    developerConfiguration:
+      featureGates: []
+      # Strict hardware KVM enforcement; never silently degrade benchmarks to software TCG
+      useEmulation: false
+      cpuAllocationRatio: 10
+      minimumReservePVCBytes: 131072
+    migrations:
+      allowAutoConverge: true
+      allowPostCopy: false
+      allowWorkloadDisruption: false
+      bandwidthPerMigration: "64Mi"
+      completionTimeoutPerGiB: 800
+      disableTLS: false
+      matchSELinuxLevelOnMigration: false
+      nodeDrainTaintKey: "kubevirt.io/drain"
+      parallelMigrationsPerCluster: 5
+      parallelOutboundMigrationsPerNode: 2
+      progressTimeout: 150
+      unsafeMigrationOverride: false
+      # Optional dedicated migration CNI attachment (e.g. Multus NAD in kubevirt namespace);
+      # omitted by default so live migrations traverse the routed Calico BGP network (TCP 49152-49215).
+      # network: "migration-network"

@@ -1,0 +1,92 @@
+---
+# Live CPU, Memory, and Disk Hot-Plug Ready Ubuntu 24.04 Virtual Machine (KubeVirt v1.9.1).
+# Requirements & Limitations:
+#   - Requires KubeVirt CR `configuration.vmRolloutStrategy: LiveUpdate` (GA since v1.5).
+#   - Pod resource `limits` (`cpu: "4"`, `memory: 4608Mi`) exceed initial VM footprint (`2` cores / `2Gi`)
+#     so hot-plugging CPU sockets (`2 -> 4`) or guest RAM (`2Gi -> 4Gi`) does not trigger cgroup OOMKill.
+#   - CPU hot-plug adds vCPU sockets; Linux Ubuntu 24.04 + qemu-guest-agent brings sockets online automatically.
+#   - Memory hot-plug expands ACPI DIMM/virtio-mem blocks; guest kernel >= 5.15 / Ubuntu 24.04 brings RAM online
+#     (or udev/guest check required). Shrinking CPU sockets or RAM on live KVM guests requires VM restart.
+#   - Secondary storage disks hot-plugged via `virtctl addvolume` attach over the `scsi` bus dynamically.
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  name: vm-ubuntu-hotplug
+  namespace: kubevirt-workloads
+  labels:
+    app.kubernetes.io/name: vm-ubuntu-hotplug
+    app.kubernetes.io/component: virtual-machine-hotplug
+    app.kubernetes.io/part-of: k8s-high-performance-storage
+spec:
+  runStrategy: Always
+  dataVolumeTemplates:
+    - metadata:
+        name: ubuntu-hotplug-root
+      spec:
+        source:
+          registry:
+            url: "docker://quay.io/containerdisks/ubuntu:24.04-2610180208"
+        pvc:
+          accessModes:
+            - ReadWriteOnce
+          volumeMode: Filesystem
+          storageClassName: mayastor-nvme-r3-ext4
+          resources:
+            requests:
+              storage: 20Gi
+  template:
+    metadata:
+      labels:
+        kubevirt.io/domain: vm-ubuntu-hotplug
+        app.kubernetes.io/part-of: k8s-high-performance-storage
+    spec:
+      evictionStrategy: None
+      terminationGracePeriodSeconds: 120
+      nodeSelector:
+        kubernetes.io/os: linux
+        kubernetes.io/arch: amd64
+      domain:
+        machine:
+          type: q35
+        cpu:
+          # Hot-plug scales sockets (cores & threads remain fixed during live update)
+          sockets: 2
+          cores: 1
+          threads: 1
+          maxSockets: 4
+        memory:
+          guest: 2Gi
+          maxGuest: 4Gi
+        resources:
+          requests:
+            cpu: "2"
+            memory: 2Gi
+          limits:
+            cpu: "4"
+            memory: 4608Mi
+        devices:
+          rng: {}
+          disks:
+            - name: rootdisk
+              bootOrder: 1
+              disk:
+                bus: virtio
+            - name: cloudinitdisk
+              disk:
+                bus: virtio
+          interfaces:
+            - name: default
+              masquerade: {}
+      networks:
+        - name: default
+          pod: {}
+      volumes:
+        - name: rootdisk
+          dataVolume:
+            name: ubuntu-hotplug-root
+        - name: cloudinitdisk
+          cloudInitNoCloud:
+            secretRef:
+              name: ubuntu-vm-cloudinit
+            networkDataSecretRef:
+              name: ubuntu-vm-cloudinit
