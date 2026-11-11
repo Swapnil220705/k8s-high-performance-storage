@@ -2,8 +2,8 @@
 
 **Project Name:** Deploy High-Performance Storage for Kubernetes  
 **Project ID:** SWFW_5S_08  
-**Document Status:** PROPOSED TARGET ARCHITECTURE (M2 K8s/Calico, M3 Mayastor, and Sprint 1 KubeVirt/Migration/Hot-Plug Configs Implemented & Statically Validated; 4-Node Multi-Node Execution Infrastructure-Dependent)  
-**Last Updated:** 2026-11-11 (Final Completion Sprint 1 — KubeVirt v1.9.1, CDI v1.66.1, VM Storage, Live Migration & Hot-Plugging)  
+**Document Status:** PROPOSED TARGET ARCHITECTURE (M1–M3, Sprint 1 KubeVirt/Migration/Hot-Plug & Sprint 2 Resilience/FIO/Observability/Integration Configs Implemented & Statically Validated; 4-Node Live Execution Infrastructure-Dependent)  
+**Last Updated:** 2026-11-11 (Final Completion Sprint 2 — Storage Resilience, FIO Benchmarking, Prometheus/Grafana Observability & E2E Demo Orchestration)  
 
 ---
 
@@ -274,14 +274,10 @@ KubeVirt supports dynamically mutating the virtual machine specification while t
 
 ## 8. Observability & Telemetry Framework
 
-To provide empirical evidence and validate architectural claims, an integrated Prometheus and Grafana stack will be established:
-1. **Node & Kernel Metrics:** `node-exporter` gathering CPU utilization, memory pressure, context switches, interrupt rates, and disk I/O stats (Internal only).
-2. **Storage Engine Metrics:** Mayastor Prometheus metrics endpoint exposing:
-   - Volume read/write IOPS.
-   - Latency histograms (p50, p95, p99).
-   - Nexus state and rebuild progress during replica degradation.
-   - SPDK core CPU utilization.
-3. **Hypervisor & VM Metrics:** KubeVirt metrics server exposing guest CPU usage, memory ballooning state, and virtual disk I/O queue depths.
+To provide empirical evidence and validate architectural claims, an integrated Prometheus and Grafana stack (`kube-prometheus-stack` `v93.2.0`: Prometheus `v3.16.0`, Grafana `13.3.1`, Prometheus Operator `v0.95.2`, strictly internal ClusterIP `:9090`/`:3000`) scrapes verified upstream endpoints (see `ADR-015` and `docs/observability.md`):
+1. **Node & Kernel Metrics:** `prometheus-node-exporter` (`:9100`) & `kube-state-metrics` gathering CPU utilization, SPDK `io-engine` core saturation (`container_cpu_usage_seconds_total`), memory pressure, `HugePages` allocations (`node_memory_HugePages_*`), and disk/NIC I/O rates.
+2. **Storage Engine Metrics (`metrics-exporter-io-engine:v2.12.2` `:9502`):** Verified Rust exporter metrics `diskpool_status`, `diskpool_*_size_bytes`, `diskpool_io_stalled`, `diskpool_io_error_count`, `volume_num_*_ops`, `volume_bytes_*`, `volume_*_latency_us` (mean latency rates; histogram percentiles measured via FIO), `replica_*`, and `mayastor_node_*`. Per-volume rebuild progress is observed via Mayastor REST API `/v0/volumes`.
+3. **Hypervisor & VM Metrics (`kubevirt` `v1.9.1` HTTPS `:8443`):** Verified collector metrics `kubevirt_vmi_info`, `kubevirt_vmi_non_evictable`, `kubevirt_vmi_migrations_in_*`, `kubevirt_vmi_migration_succeeded`/`failed`, `kubevirt_vmi_storage_iops_*`, `kubevirt_vmi_storage_*_traffic_bytes_total`, `kubevirt_vmi_storage_*_times_seconds_total`, `kubevirt_vmi_cpu_usage_seconds_total`, and `kubevirt_vmi_memory_resident_bytes`.
 
 ---
 
@@ -317,3 +313,12 @@ Milestone M3 materializes Section 5 (Distributed Storage Engine) into version-pi
   - Opt-In Experimental RWX Block Research (`vm-ubuntu-rwx-block-exp`, `mayastor-nvme-r3-block-rwx`, `runStrategy: Manual`).
 - **Live Migration & Hot-Plug (`kubevirt/migration/`, `kubevirt/hotplug/`):** `MigrationPolicy` (`default-nfs-rwx-migration-policy`, `experimental-rwx-block-migration-policy`), `VirtualMachineInstanceMigration`, `vm-ubuntu-hotplug` (CPU sockets `2->4`, RAM `2Gi->4Gi`, SCSI `hotplug-extra-disk-01`/`02`), and automation scripts `06-deploy-kubevirt.sh`, `07-deploy-vm-examples.sh`, `validate-kubevirt.sh`, `validate-vm-storage.sh`, `validate-live-migration.sh`, `validate-vm-hotplug.sh`.
 - **Runbooks:** [`docs/kubevirt-architecture.md`](docs/kubevirt-architecture.md), [`docs/vm-storage-integration.md`](docs/vm-storage-integration.md), [`docs/live-migration.md`](docs/live-migration.md), and [`docs/vm-hotplug.md`](docs/vm-hotplug.md).
+
+---
+
+## 11. Sprint 2 Storage Resilience, FIO Benchmarking, Observability & E2E Integration Reference
+
+- **Resilience & Fault Recovery (`tests/storage/`, `scripts/tests/storage/`):** Non-destructive `validate-storage-resilience.sh`, SHA-256 verifier (`verify-volume-checksum.sh`), REST/event observer (`observe-rebuild-events.sh`), and reversible fault harness (`run-resilience-drills.sh` covering `io-engine-restart`, `worker-cordon-drain`, `pool-degradation-check`, and `nfs-gateway-restart`, refused on WSL2). Runbook: [`docs/storage-resilience.md`](docs/storage-resilience.md).
+- **FIO Benchmarking Suite (`benchmarks/fio/`, `scripts/benchmark/`, `tests/benchmarks/`):** 6 versioned FIO job profiles (`4k-randread`, `4k-randwrite`, `4k-randrw-70-30`, `64k-seqread`, `64k-seqwrite`, `1m-bandwidth`), `matrix-config.yaml`, guarded runner `run-fio-benchmarks.sh`, Python parser `summarize-results.py` (enforcing `environment_class` comparability), and `unittest` verification. Runbook: [`docs/performance-benchmarking.md`](docs/performance-benchmarking.md).
+- **Observability Stack (`monitoring/`):** Pinned `kube-prometheus-stack` `v93.2.0` (`values.yaml` + `values-dev-lightweight.yaml`), `prometheus.yml`, `ServiceMonitor` & `PrometheusRule` manifests validated via `promtool v3.16.0` and `monitoring.coreos.com/v1` CRD schemas, 3 custom Grafana dashboards, `08-deploy-monitoring.sh`, and `validate-observability.sh`. Runbook: [`docs/observability.md`](docs/observability.md).
+- **Integrated E2E Orchestrator (`scripts/demo/`):** 9-stage `run-project-demo.sh` (`local-validation` safe default vs `target-live`) and master `validate-project-integration.sh`. Runbook: [`docs/demo-runbook.md`](docs/demo-runbook.md).

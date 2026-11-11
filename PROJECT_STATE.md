@@ -4,10 +4,10 @@
 **Project ID:** SWFW_5S_08  
 **Program:** Zoho SETU — College Student Project Program  
 **Active Branch:** `main`  
-**Current Phase:** Final Completion Sprint (Prompt 1 of 3 Completed — KubeVirt, VM Storage, Live Migration & CPU/Memory/Disk Hot-Plug)  
-**Current Chunk:** Final Completion Sprint — Prompt 1 of 3  
-**Sprint 1 Status:** 🟢 COMPLETED (KubeVirt `v1.9.1`, CDI `v1.66.1`, VM Storage Tiers, Default NFS RWX & Opt-In Experimental RWX Migration, CPU/Memory/Disk Hot-Plug Implemented & Statically/Safety Validated; Multi-Node Execution INFRASTRUCTURE-DEPENDENT)  
-**Overall Completion:** M1–M5 Completed + M6 Core Implemented (Multus NIC Hot-Plug, Fault Recovery M7, FIO Benchmarks M8, Observability M9, Final Report M10 Remaining in Sprints 2–3)  
+**Current Phase:** Final Completion Sprint (Prompt 2 of 3 Completed — Storage Resilience, FIO Benchmarking, Observability & E2E Demo Integration)  
+**Current Chunk:** Final Completion Sprint — Prompt 2 of 3  
+**Sprint 2 Status:** 🟢 COMPLETED (Mayastor Resilience & Reversible Fault Drills, FIO Benchmark Suite + Python Parser Unit Tests, `kube-prometheus-stack v93.2.0` + `promtool v3.16.0` + 3 Grafana Dashboards, and 9-Stage E2E Demo Orchestrator Implemented & Statically/Safety Validated; Multi-Node Live Execution INFRASTRUCTURE-DEPENDENT)  
+**Overall Completion:** M1–M9 Completed + M10 E2E Orchestrator Implemented (Publication Graphs, Final Report, Viva Kit Remaining in Prompt 3 of 3)  
 
 ---
 
@@ -35,10 +35,10 @@
 | **M4** | **Milestone 4: KubeVirt Virtualization Stack Integration** | 🟢 **COMPLETED** | Sprint 1 (M4) | KubeVirt `v1.9.1`, CDI `v1.66.1`, strict CRD + K8s `v1.36.6` schemas, `06-deploy-kubevirt.sh`, `validate-kubevirt.sh` (`PASS` dry-run/schema/refusal) |
 | **M5** | **Milestone 5: Storage Subsystem Integration with Virtual Machines** | 🟢 **COMPLETED** | Sprint 1 (M5) | RWO FS, RWO Block, Default NFS RWX (`csi-driver-nfs v4.9.0`), Opt-In Exp RWX Block, cloud-init, `07-deploy-vm-examples.sh`, `validate-vm-storage.sh` |
 | **M6** | **Milestone 6: VM Live Migration & Runtime Resource Hot-Plugging** | 🟡 **CORE IMPLEMENTED** | Sprint 1 (M6 Core) | `MigrationPolicy`, `VMIM`, `vm-ubuntu-hotplug`, `validate-live-migration.sh`, `validate-vm-hotplug.sh`; Multus NIC hot-plug pending Sprint 2–3 |
-| **M7** | Milestone 7: Distributed Storage Failure Recovery & Rebuild Drills | ⚪ NOT STARTED | Phase 3 | Fault Injection Automation, Write-Log Replay, Anti-Affinity |
-| **M8** | Milestone 8: Storage Performance Benchmarking (FIO Matrix) | ⚪ NOT STARTED | Phase 3 | 6 FIO Profiles, Multi-Tier Execution, Parser Tooling |
-| **M9** | Milestone 9: Full-Stack Telemetry, Monitoring & Observability | ⚪ NOT STARTED | Phase 3 | Prometheus ServiceMonitors, 3 Custom Grafana Dashboards |
-| **M10**| Milestone 10: Final System Integration, Evidence & Submission | ⚪ NOT STARTED | Phase 4 | Master Integration Suite, Publication Graphs, Viva Defense Kit |
+| **M7** | **Milestone 7: Distributed Storage Failure Recovery & Rebuild Drills** | 🟢 **COMPLETED** | Sprint 2 (M7) | `resilience-scenarios.yaml`, `verify-volume-checksum.sh`, `observe-rebuild-events.sh`, `run-resilience-drills.sh`, `validate-storage-resilience.sh` |
+| **M8** | **Milestone 8: Storage Performance Benchmarking (FIO Matrix)** | 🟢 **COMPLETED** | Sprint 2 (M8) | `6` `.fio` profiles, `matrix-config.yaml`, `run-fio-benchmarks.sh`, `summarize-results.py`, `test_summarize_results.py` (`3` unittest pass) |
+| **M9** | **Milestone 9: Full-Stack Telemetry, Monitoring & Observability** | 🟢 **COMPLETED** | Sprint 2 (M9) | `kube-prometheus-stack v93.2.0`, `promtool v3.16.0` verified alerts & config, `3` Grafana JSONs, `08-deploy-monitoring.sh`, `validate-observability.sh` |
+| **M10**| **Milestone 10: Final System Integration, Evidence & Submission** | 🟡 **INTEGRATION READY** | Sprint 2 (M10 Core) / Sprint 3 | 9-stage `run-project-demo.sh` & `validate-project-integration.sh` done (`Sprint 2`); publication charts, final paper & viva kit pending Sprint 3 |
 
 ---
 
@@ -186,6 +186,8 @@
 - **ADR-011:** Project strategy realignment & decoupling from institutional gating $\rightarrow$ `ACCEPTED / ACTIVE`
 - **ADR-012:** OpenEBS 4.6.2 / Mayastor v2.12.2 umbrella scoping, `DiskPool v1beta3` schema & CSI parameter enforcement $\rightarrow$ `ACCEPTED (M3)`
 - **ADR-013:** KubeVirt `v1.9.1` & CDI `v1.66.1` stack selection, `LiveUpdate` strategy & default NFS RWX migration path $\rightarrow$ `ACCEPTED (Sprint 1)`
+- **ADR-014:** Reproducible storage resilience drills & FIO multi-tier comparability protocol $\rightarrow$ `ACCEPTED (Sprint 2)`
+- **ADR-015:** Pin `kube-prometheus-stack` `v93.2.0` & explicit exporter metric-gap transparency $\rightarrow$ `ACCEPTED (Sprint 2)`
 
 ---
 
@@ -225,7 +227,7 @@
 
 ## 7. Next Authorized Action
 
-Final Completion Sprint — Prompt 1 of 3 (`KubeVirt Integration, VM Storage, Live Migration & Hot-Plugging`) is complete, committed cleanly on `main` (pushed M1–M3 baseline verified at `587c7c2` prior to Sprint 1), statically validated (`8/8` validation suite, `40/40` resources valid across 23 manifests, `0` warnings/errors), and safety-verified on WSL2. **STOP AND AWAIT USER APPROVAL FOR PROMPT 2 OF 3.**
+Final Completion Sprint — Prompt 2 of 3 (`Storage Resilience, Performance Benchmarking, Observability & Integration Testing`) is complete, committed cleanly on `main` (building on pushed Sprint 1 commit `7c8c98f`), statically validated (`11/11` validation suite, `promtool v3.16.0` config & 10 rules, `44/44` K8s/CRD resources, `6` FIO `--parse-only` profiles, Python `unittest`, 9-stage `run-project-demo.sh`), and safety-verified on WSL2. **STOP AND AWAIT USER APPROVAL FOR PROMPT 3 OF 3.**
 
 ---
 
@@ -236,24 +238,37 @@ Final Completion Sprint — Prompt 1 of 3 (`KubeVirt Integration, VM Storage, Li
 
 ---
 
-### Final Completion Sprint — Prompt 1 of 3 Completion Record (2026-11-11)
+### Final Completion Sprint — Prompt 1 of 3 Completion Record (2026-11-11, Pushed to `origin/main`)
 - **Sprint Scope Status:** `🟢 COMPLETED` (KubeVirt Deployment, VM Workloads & Persistent Storage Integration, Live Migration, and CPU/Memory/Disk Hot-Plugging)
-- **Recorded Git Commits (`main`, ahead of `origin/main` pending push):**
+- **Recorded Git Commits (`origin/main` verified pushed prior to Prompt 2):**
   - `9a13516` — `feat(kubevirt): add KubeVirt v1.9.1, CDI v1.66.1, NFS RWX gateway, VMs, migration and hotplug manifests`
   - `ce40d69` — `feat(validate): add KubeVirt deployment, VM storage, live migration, and hotplug scripts and reports`
-  - Plus `docs(sprint1)` documentation & state synchronization commit.
-- **Baseline Push Verification:** Inspected `origin/main..HEAD` at Sprint 1 start (`empty`; M3 `587c7c2` was already pushed to `origin/main`).
+  - `7c8c98f` — `docs(sprint1): add KubeVirt, VM storage, migration, and hotplug guides and sync project state`
 - **Artifacts Created / Updated:**
   - Offline K8s `v1.36.6` core strict schemas (`infrastructure/k8s/schemas/v1.36.6-standalone-strict/*.json`) + KubeVirt/CDI/Migration schemas (`kubevirt/installation/schemas/{kubevirt.io,migrations.kubevirt.io,cdi.kubevirt.io}/*.json`).
   - KubeVirt `v1.9.1` & CDI `v1.66.1` configs: `kubevirt/installation/{release-metadata.yaml,namespaces.yaml,kubevirt-cr.yaml,cdi-cr.yaml}`.
   - NFS RWX fallback gateway: `storage/nfs/{nfs-server-mayastor.yaml,nfs-storageclass.yaml}` (`csi-driver-nfs v4.9.0`, `docker.io/itsthenetwork/nfs-server-alpine:12` over `mayastor-nvme-r3-ext4` RWO).
   - VM workloads & cloud-init: `kubevirt/virtualmachines/{cloud-init-secret.yaml,vm-ubuntu-rwo-filesystem.yaml,vm-ubuntu-mayastor-rwo-block.yaml,vm-ubuntu-rwx-nfs-migration.yaml,vm-ubuntu-rwx-block-experimental.yaml,vm-cirros-dev-minimal.yaml}`.
   - Live migration & hot-plug specs: `kubevirt/migration/{migration-policy.yaml,live-migration-job.yaml}` and `kubevirt/hotplug/{vm-ubuntu-hotplug-ready.yaml,hotplug-data-volume.yaml}`.
-  - Automation & validators: `scripts/setup/{06-deploy-kubevirt.sh,07-deploy-vm-examples.sh}`, `scripts/validate/{validate-kubevirt.sh,validate-vm-storage.sh,validate-live-migration.sh,validate-vm-hotplug.sh}`, updated `scripts/validate/run-validation.sh`.
-  - Documentation: `docs/{kubevirt-architecture.md,vm-storage-integration.md,live-migration.md,vm-hotplug.md}`, synchronized `ARCHITECTURE.md`, `DECISIONS.md` (`ADR-013`), `README.md`, `docs/development-roadmap.md`, and `PROJECT_STATE.md`.
+  - Automation & validators: `scripts/setup/{06-deploy-kubevirt.sh,07-deploy-vm-examples.sh}`, `scripts/validate/{validate-kubevirt.sh,validate-vm-storage.sh,validate-live-migration.sh,validate-vm-hotplug.sh}`, `docs/{kubevirt-architecture.md,vm-storage-integration.md,live-migration.md,vm-hotplug.md}`.
   - Archived WSL2/static reports (`reports/kubevirt/`): `kubevirt-validation-2026-11-11_12-07-04.{txt,json}`, `vm-storage-validation-2026-11-11_12-07-07.{txt,json}`, `live-migration-validation-2026-11-11_12-07-08.{txt,json}`, `vm-hotplug-validation-2026-11-11_12-07-10.{txt,json}`.
+
+---
+
+### Final Completion Sprint — Prompt 2 of 3 Completion Record (2026-11-11)
+- **Sprint Scope Status:** `🟢 COMPLETED` (Mayastor Storage Resilience, FIO Performance Benchmarking, Prometheus/Grafana Observability, and 9-Stage Integrated Project Demo)
+- **Recorded Git Commits (`main`, ahead of `origin/main` pending push):**
+  - `eb64164` — `test(resilience,benchmark): add Mayastor resilience drills, FIO benchmark suite, and unit tests`
+  - `7176b47` — `feat(monitoring,demo): add kube-prometheus-stack v93.2.0 observability, dashboards, and 9-stage E2E demo`
+  - Plus `docs(sprint2)` documentation & state synchronization commit.
+- **Artifacts Created / Updated:**
+  - **Storage Resilience:** `tests/storage/resilience-scenarios.yaml`, `scripts/validate/validate-storage-resilience.sh`, `scripts/tests/storage/{verify-volume-checksum.sh,observe-rebuild-events.sh,run-resilience-drills.sh}`, `docs/storage-resilience.md`.
+  - **FIO Benchmarking:** `benchmarks/fio/{4k-randread.fio,4k-randwrite.fio,4k-randrw-70-30.fio,64k-seqread.fio,64k-seqwrite.fio,1m-bandwidth.fio,matrix-config.yaml}`, `scripts/benchmark/{run-fio-benchmarks.sh,summarize-results.py}`, `tests/benchmarks/test_summarize_results.py`, `docs/performance-benchmarking.md`.
+  - **Prometheus & Grafana Observability:** `monitoring/release-metadata.yaml`, `monitoring/prometheus/{namespace.yaml,values.yaml,values-dev-lightweight.yaml,prometheus.yml,servicemonitors.yaml,prometheus-rules.yaml}`, CRD schemas (`monitoring/prometheus/schemas/monitoring.coreos.com/*.json`), `monitoring/grafana/provisioning/{datasources/prometheus.yaml,dashboards/dashboards.yaml}`, `monitoring/grafana/dashboards/{mayastor-storage-performance.json,kubevirt-vm-telemetry.json,cluster-node-resources.json}`, `scripts/setup/08-deploy-monitoring.sh`, `scripts/validate/validate-observability.sh`, `docs/observability.md`.
+  - **Integrated Demo & Governance:** `scripts/demo/run-project-demo.sh`, `scripts/validate/validate-project-integration.sh`, updated `scripts/validate/run-validation.sh` (11 steps), `docs/demo-runbook.md`, `.gitattributes`, updated `README.md`, `ARCHITECTURE.md`, `DECISIONS.md` (`ADR-014`, `ADR-015`), `docs/development-roadmap.md`, and `PROJECT_STATE.md`.
+  - **Archived Validation Reports:** `reports/storage/storage-resilience-2026-11-11_12-35-48.{txt,json}`, `reports/monitoring/observability-validation-2026-11-11_12-29-40.{txt,json}`, `reports/integration/project-demo-2026-11-11_12-36-44.{txt,json}`, `reports/integration/integration-check-2026-11-11_12-36-23.json`.
 - **Three-State Breakdown:**
-  - `IMPLEMENTED`: Complete KubeVirt `v1.9.1`, CDI `v1.66.1`, NFS RWX gateway, 5 VM workload patterns, `MigrationPolicy`/`VMIM`, CPU/memory/disk hot-plug specs, 6 setup/validation scripts, 4 runbooks, and `ADR-013`.
-  - `VALIDATED` (Local/Static & Safety): `run-validation.sh` **`8/8 PASS`** (`ShellCheck` 17 scripts, `shfmt -i 4`, `yamllint` 28 YAML files, `kubeconform -strict` **40/40 resources across 23 files**, `kubeadm config validate`, `jq` 24/24 JSONs, `01-host-preflight.sh`); `06` & `07` `--dry-run` PASS & WSL2 live refusal PASS; non-destructive validators + `--require-deployed`/`--execute` refusal gates verified.
-  - `INFRASTRUCTURE-DEPENDENT`: Live KubeVirt/CDI deployment (`virt-handler` `/dev/kvm`), CDI image import into Mayastor/NFS PVCs, running 4 GiB Ubuntu VMs, cross-node live migration, and live CPU/RAM/SCSI hot-plugging (all require target multi-node Ubuntu hardware; WSL2 host has 3515 MiB total RAM and 1 K3s node).
-- **Next Authorized Action:** **STOPPED after Final Completion Sprint — Prompt 1 of 3.** Await explicit user review and authorization before beginning **Final Completion Sprint — Prompt 2 of 3**.
+  - `IMPLEMENTED`: Complete resilience scenarios/drills, FIO benchmark profiles & Python comparability parser, `kube-prometheus-stack v93.2.0` + 3 dashboards + 10 alerts, and 9-stage E2E demo orchestrator.
+  - `VALIDATED` (Local/Static & Safety): `validate-project-integration.sh` (`11/11` `run-validation.sh` PASS: 12 tools, 26 scripts ShellCheck/shfmt 0 warnings, 39 YAML files 0 warnings/errors, `kubeconform -strict` 44/44 resources across 26 files, `jq` 36/36 JSONs, 6 FIO `--parse-only`, `promtool v3.16.0` config & 10 rules, Python `unittest` 3/3); all 14 required docs verified; 9-stage `local-validation` demo PASS (`PASS=1, SKIP_INFRA=8, FAIL=0`); SHA-256 local cycle PASS; all 6 Sprint 2 live/destructive WSL2 refusal gates return `exit 1`.
+  - `INFRASTRUCTURE-DEPENDENT`: Live Mayastor replica fault drills (`io-engine-restart`, `worker-cordon-drain`), bare-metal NVMe / KubeVirt / NFS FIO benchmark measurements, live Prometheus scraping (`metrics-exporter-io-engine:9502`, KubeVirt `:8443`), Grafana UI visualization, and multi-node live migration execution.
+- **Next Authorized Action:** **STOPPED after Final Completion Sprint — Prompt 2 of 3.** Await explicit user review and authorization before starting **Final Completion Sprint — Prompt 3 of 3**.

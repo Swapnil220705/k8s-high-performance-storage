@@ -4,7 +4,7 @@
 **Program:** Zoho SETU — College Student Project Program  
 **Category:** Cloud Infrastructure / Kubernetes / Virtualization / Distributed Storage / Systems Engineering  
 **Repository Branch:** `main`  
-**Status:** In Progress (Phase 2–3 Complete: M2 Kubernetes, M3 Mayastor & Sprint 1 KubeVirt/Migration/Hot-Plug Implemented & Statically Validated; Live Multi-Node Deployment & Benchmarks Pending)  
+**Status:** In Progress (M1–M9 Implemented & Statically/Safety Validated across Cluster, Mayastor, KubeVirt, Resilience, FIO, Observability & 9-Stage Demo; Live Multi-Node Execution & Benchmarks INFRASTRUCTURE-DEPENDENT)  
 
 ---
 
@@ -54,8 +54,8 @@ Enterprise workloads demanding virtualization within Kubernetes require storage 
 | **Virtualization Layer** | KubeVirt + CDI | `KubeVirt v1.9.1` + `CDI v1.66.1` (`virtctl v1.9.0`) | Kubernetes CRD controller & DataVolume importer managing QEMU/KVM VM pods (`ADR-013`) |
 | **Hypervisor / Emulator** | QEMU / KVM | Linux KVM module (`/dev/kvm`) | Hardware-assisted virtualization within VM launcher pods |
 | **Shared Storage Gateway** | NFS Server / RWX Provisioner | `csi-driver-nfs` v4.9.0 | Comparative fallback mechanism for RWX live-migration shared storage |
-| **Benchmarking Suite** | Flexible I/O Tester (`fio`) | v3.30+ | Multi-pattern synthetic I/O workload generation & measurement |
-| **Metrics & Monitoring** | Prometheus & Grafana | `kube-prometheus-stack` v62.x | Cluster, storage engine, and guest VM telemetry (Internal management network only) |
+| **Benchmarking Suite** | Flexible I/O Tester (`fio`) | v3.30+ (`v3.36` locally verified) | Multi-pattern synthetic I/O matrix (`6` `.fio` profiles, `summarize-results.py`) |
+| **Metrics & Monitoring** | Prometheus & Grafana | `kube-prometheus-stack` `v93.2.0` (`Prom v3.16.0`, `Grafana 13.3.1`) | Verified Mayastor `v2.12.2` & KubeVirt `v1.9.1` ClusterIP telemetry & alerts (`ADR-015`) |
 
 ---
 
@@ -126,10 +126,11 @@ All capabilities below represent project targets and will be updated as implemen
 | 8 | **CPU Hot-Plug** | Dynamic vCPU socket scaling (`LiveUpdate`, `maxSockets: 4`) | 🛠️ `IMPLEMENTED` / 🧪 Manifest/Bounds `VALIDATED` / 🔒 Live Patch `INFRASTRUCTURE-DEPENDENT` | Sprint 1 (M6) |
 | 9 | **Memory Hot-Plug** | Dynamic guest RAM scaling (`guest: 2Gi -> maxGuest: 4Gi`) | 🛠️ `IMPLEMENTED` / 🧪 Manifest/Bounds `VALIDATED` / 🔒 Live Patch `INFRASTRUCTURE-DEPENDENT` | Sprint 1 (M6) |
 | 10 | **Storage Hot-Plug** | Dynamic SCSI volume attach/detach (`virtctl addvolume`/`removevolume`) | 🛠️ `IMPLEMENTED` / 🧪 Schema & Script `VALIDATED` / 🔒 Live Attach `INFRASTRUCTURE-DEPENDENT` | Sprint 1 (M6) |
-| 11 | **NIC Hot-Plug** | Attaching dynamic Multus secondary interface | ⏳ NOT STARTED | Remaining Sprint |
-| 12 | **Benchmarking** | Matrix testing using `fio` across R/W profiles | ⏳ NOT STARTED | M7–M8 |
-| 13 | **Failure Recovery** | Degraded pool rebuild and node offline failover | ⏳ NOT STARTED | M7 |
-| 14 | **Observability** | Real-time dashboards for IOPS, latency, and health | ⏳ NOT STARTED | M8 |
+| 11 | **NIC Hot-Plug** | Attaching dynamic Multus secondary interface | ⏳ NOT STARTED | Deferred (`ADR-011` / Sprint 3) |
+| 12 | **Benchmarking** | `6` `.fio` profiles, `run-fio-benchmarks.sh`, `summarize-results.py`, `unittest` | 🛠️ `IMPLEMENTED` / 🧪 `--parse-only` + `unittest` `VALIDATED` / 🔒 Bare-metal `INFRASTRUCTURE-DEPENDENT` | Sprint 2 (M8) |
+| 13 | **Failure Recovery** | 4 reversible scenarios, SHA-256 verifier, event observer, drill runner | 🛠️ `IMPLEMENTED` / 🧪 Dry-Run + SHA-256 + Refusal `VALIDATED` / 🔒 Faults `INFRASTRUCTURE-DEPENDENT` | Sprint 2 (M7) |
+| 14 | **Observability** | `kube-prometheus-stack v93.2.0`, `ServiceMonitor`s, `PrometheusRule`, `3` Grafana JSONs | 🛠️ `IMPLEMENTED` / 🧪 `promtool v3.16.0` + CRD + JSON `VALIDATED` / 🔒 Live `INFRASTRUCTURE-DEPENDENT` | Sprint 2 (M9) |
+| 15 | **Integration Demo** | 9-stage orchestrator `run-project-demo.sh` & `validate-project-integration.sh` | 🛠️ `IMPLEMENTED` / 🧪 `local-validation` + `11/11` Suite `VALIDATED` / 🔒 Live `INFRASTRUCTURE-DEPENDENT` | Sprint 2 (M10 Core) |
 
 ---
 
@@ -243,6 +244,12 @@ Development follows a strict **hybrid infrastructure model**:
 - [Live Migration Runbook (docs/live-migration.md)](docs/live-migration.md): `MigrationPolicy`, network/RAM budgets, `validate-live-migration.sh`, timeout rollback, and post-migration verification.
 - [Runtime Hot-Plugging Guide (docs/vm-hotplug.md)](docs/vm-hotplug.md): CPU sockets, memory `maxGuest`, SCSI disk attach/detach (`virtctl addvolume`), guest OS & restart limits.
 
+### Sprint 2 Resilience, Benchmarking, Observability & Integration Runbooks
+- [Storage Resilience & Recovery Guide (docs/storage-resilience.md)](docs/storage-resilience.md): Partial write-log rebuilds, 3-node anti-affinity, `validate-storage-resilience.sh`, and guarded drills (`run-resilience-drills.sh`).
+- [FIO Benchmarking Guide (docs/performance-benchmarking.md)](docs/performance-benchmarking.md): 6 versioned FIO profiles (`4k`, `64k`, `1M`), safety guards, and environment-isolated result summarization (`summarize-results.py`).
+- [Observability Architecture (docs/observability.md)](docs/observability.md): Pinned `kube-prometheus-stack v93.2.0`, source-verified Mayastor/KubeVirt metrics & explicit gaps, `promtool`-checked alerts, and 3 Grafana dashboards.
+- [End-to-End Demo Runbook (docs/demo-runbook.md)](docs/demo-runbook.md): 9-stage `run-project-demo.sh` (`local-validation` vs `target-live`) and `validate-project-integration.sh`.
+
 ---
 
 ## 9. Implementation Roadmap
@@ -252,14 +259,15 @@ flowchart LR
     P1["Phase 1<br/>Chunks 0-2.1"] --> M1["M1: Dev Tooling<br/>& Preflight"]
     M1 --> M2["M2: K8s Cluster<br/>& Calico"]
     M2 --> M3["M3: OpenEBS<br/>Mayastor Engine"]
-    M3 --> M4["Sprint 1 (M4-M6 Core):<br/>KubeVirt, VM Storage,<br/>Migration & Hot-Plug"]
-    M4 --> M7["Sprint 2-3:<br/>NIC Hot-Plug, Faults,<br/>FIO, Telemetry & Report"]
+    M3 --> S1["Sprint 1 (M4-M6 Core):<br/>KubeVirt, VM Storage,<br/>Migration & Hot-Plug"]
+    S1 --> S2["Sprint 2 (M7-M9 + Demo):<br/>Resilience, FIO,<br/>Observability & E2E"]
+    S2 --> S3["Sprint 3 (M10):<br/>Final Report, Charts<br/>& Viva Defense Kit"]
 
     classDef done fill:#2da44e,stroke:#1b7c3a,color:#fff;
     classDef pending fill:#8c959f,stroke:#6e7781,color:#fff;
 
-    class P1,M1,M2,M3,M4 done;
-    class M7 pending;
+    class P1,M1,M2,M3,S1,S2 done;
+    class S3 pending;
 ```
 
-*Current Phase: Final Completion Sprint 1 Completed (KubeVirt `v1.9.1`, CDI `v1.66.1`, VM Storage Tiers, Live Migration, and CPU/Memory/Disk Hot-Plug Implemented & Statically Validated; Live Multi-Node Deployment Pending Target Hardware). Next Authorized Step: Final Completion Sprint — Prompt 2 of 3.*
+*Current Phase: Final Completion Sprint 2 Completed (Storage Resilience, FIO Benchmarking, Prometheus/Grafana Observability, and 9-Stage E2E Integration Demo Implemented & Statically/Safety Validated; Live Multi-Node Execution INFRASTRUCTURE-DEPENDENT). Next Authorized Step: Final Completion Sprint — Prompt 3 of 3.*

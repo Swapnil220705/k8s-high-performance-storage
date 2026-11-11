@@ -304,3 +304,29 @@
   4. **Host Safety Guardrails (`06` & `07` Scripts):** Require non-destructive KVM/CPU preflight, offline schema validation (`kubevirt/installation/schemas/`), dynamic SSH public-key injection (`--ssh-key-file`), and hard refusal of live KubeVirt/VM deployment inside the 3.5 GiB WSL2 single-node host.
 - **Consequences:** All KubeVirt, CDI, VM, migration, and hot-plug manifests validate strictly under `kubeconform -strict` and `--dry-run` while preserving honest `INFRASTRUCTURE-DEPENDENT` classification for live multi-node execution.
 - **References:** `kubevirt/installation/release-metadata.yaml`, `kubevirt/installation/kubevirt-cr.yaml`, `docs/kubevirt-architecture.md`, `docs/vm-storage-integration.md`, `docs/live-migration.md`, `docs/vm-hotplug.md`.
+
+---
+
+## ADR-014: Reproducible Storage Resilience Drills & FIO Multi-Tier Comparability Protocol
+- **Status:** `ACCEPTED (Final Completion Sprint 2 — Implemented & Statically/Unit Validated 2026-11-11)`
+- **Date:** 2026-11-11
+- **Context:** Evaluating distributed storage resilience (replica degradation/partial rebuilds) and storage I/O latency/bandwidth (`fio`) requires reproducible automation while preventing destructive actions or misleading cross-environment comparisons inside single-node WSL2 environments.
+- **Decisions Made:**
+  1. **Reversible Fault Drills (`tests/storage/`, `scripts/tests/storage/`):** Encapsulate 4 reversible scenarios (`io-engine-restart`, `worker-cordon-drain`, `pool-degradation-check`, `nfs-gateway-restart`) in `run-resilience-drills.sh` with `--mode dry-run` / `--mode simulate` as non-mutating defaults, hard WSL2 refusal in `--mode execute`, explicit `--confirm-drill YES-EXECUTE-RESILIENCE-DRILL`, zero PVC/DiskPool deletion, and `EXIT`-trap `uncordon` cleanup paired with `verify-volume-checksum.sh` SHA-256 verification.
+  2. **Filename-Free FIO Job Profiles & Comparability Enforcement:** Omit hardcoded `filename=` paths from `benchmarks/fio/*.fio` (`4k-randread`, `4k-randwrite`, `4k-randrw-70-30`, `64k-seqread`, `64k-seqwrite`, `1m-bandwidth`) so `fio --parse-only` runs cleanly while `run-fio-benchmarks.sh` validates target paths against OS root mounts (`findmnt`) and free space before execution.
+  3. **Strict Environment Class Separation:** Every benchmark records `environment_class` and `evidence_level` (`EMPIRICAL_HARDWARE`, `WSL2_PIPELINE_ONLY`, `SYNTHETIC_FIXTURE`, `DRY_RUN`) in `benchmark-metadata.json`; `summarize-results.py --compare` blocks mixing heterogeneous environments unless explicitly flagged with warning banners.
+- **Consequences:** All FIO profiles, parser unit tests (`unittest`), SHA-256 verification cycles, and resilience safety gates pass locally without inventing hardware IOPS or triggering destructive faults on WSL2.
+- **References:** `docs/storage-resilience.md`, `docs/performance-benchmarking.md`, `benchmarks/fio/`, `scripts/benchmark/`, `scripts/tests/storage/`.
+
+---
+
+## ADR-015: Pin `kube-prometheus-stack` v93.2.0 & Explicit Exporter Metric-Gap Transparency
+- **Status:** `ACCEPTED (Final Completion Sprint 2 — Promtool & CRD Validated 2026-11-11)`
+- **Date:** 2026-11-11
+- **Context:** Preliminary notes referenced unverified chart drafts (`v62.x`) and generic wishlist metrics (e.g., Mayastor latency histograms and `volume_rebuild_progress_percent`). Direct source inspection of `openebs/mayastor-extensions v2.12.2` Rust exporters and `kubevirt/kubevirt v1.9.1` Go collectors established exact emitted metric names and missing counters.
+- **Decisions Made:**
+  1. **Pinned Observability Stack:** Pin `prometheus-community/kube-prometheus-stack` **`v93.2.0`** (`prometheus-operator v0.95.2`, `prometheus v3.16.0`, `grafana 13.3.1` / chart `14.4.1`) in `monitoring/prometheus/values.yaml` (with constrained `values-dev-lightweight.yaml` overlay), strictly ClusterIP-internal (`9090` / `3000`).
+  2. **Source-Verified PromQL & Alerts Only:** Build `ServiceMonitor`, `PrometheusRule` (validated with real `promtool v3.16.0` + extracted `monitoring.coreos.com/v1` CRD schemas), and 3 Grafana dashboards solely on verified upstream metric names (`diskpool_*`, `volume_*`, `replica_*`, `mayastor_node_*`, `kubevirt_vmi_*`).
+  3. **Document Upstream Exporter Gaps Explicitly:** Document that Mayastor `v2.12.2` exposes cumulative `*_latency_us` counters (mean latency only, not Prometheus histograms -> empirical percentiles come from FIO) and omits `volume_rebuild_progress_percent` (polled via REST `/v0/volumes` in `observe-rebuild-events.sh`), and that Alpine `nfsd` lacks a native exporter.
+- **Consequences:** Zero hallucinated metrics or broken PromQL alerts; offline `promtool check config` and `promtool check rules` validate cleanly before deployment onto multi-node hardware.
+- **References:** `monitoring/release-metadata.yaml`, `monitoring/prometheus/`, `monitoring/grafana/`, `docs/observability.md`.
