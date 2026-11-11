@@ -1,0 +1,75 @@
+# ==============================================================================
+# kubeadm Cluster Initialization Configuration
+# Project: Deploy High-Performance Storage for Kubernetes (SWFW_5S_08)
+# Target Baseline: Candidate B - Kubernetes v1.36.6 + containerd 2.3.x LTS + Calico v3.33.0
+# Status: PROPOSED / STATIC TEMPLATE (Schema-validated against kubeadm.k8s.io/v1beta4)
+#
+# Parameterization Notice:
+#   - Do NOT commit physical production IP addresses or hostnames to this file.
+#   - controlPlaneEndpoint uses a DNS placeholder; localAPIEndpoint.advertiseAddress
+#     and nodeRegistration.name are injected dynamically at runtime into an isolated
+#     rendered copy by scripts/setup/03-bootstrap-control-plane.sh.
+#   - Keep podSubnet (10.244.0.0/16) synchronized with Calico ipPools CIDR.
+# ==============================================================================
+apiVersion: kubeadm.k8s.io/v1beta4
+kind: InitConfiguration
+localAPIEndpoint:
+  bindPort: 6443
+nodeRegistration:
+  criSocket: unix:///run/containerd/containerd.sock
+  imagePullPolicy: IfNotPresent
+  imagePullSerial: true
+timeouts:
+  controlPlaneComponentHealthCheck: 4m0s
+  discovery: 5m0s
+  etcdAPICall: 2m0s
+  kubeletHealthCheck: 4m0s
+  kubernetesAPICall: 1m0s
+  tlsBootstrap: 5m0s
+---
+apiVersion: kubeadm.k8s.io/v1beta4
+kind: ClusterConfiguration
+clusterName: k8s-hp-storage
+kubernetesVersion: v1.36.6
+controlPlaneEndpoint: "k8s-control-plane.internal:6443"
+imageRepository: registry.k8s.io
+certificatesDir: /etc/kubernetes/pki
+encryptionAlgorithm: RSA-2048
+caCertificateValidityPeriod: 87600h0m0s
+certificateValidityPeriod: 8760h0m0s
+networking:
+  dnsDomain: cluster.local
+  podSubnet: 10.244.0.0/16
+  serviceSubnet: 10.96.0.0/12
+etcd:
+  local:
+    dataDir: /var/lib/etcd
+apiServer:
+  extraArgs:
+    - name: authorization-mode
+      value: Node,RBAC
+controllerManager:
+  extraArgs:
+    - name: bind-address
+      value: 127.0.0.1
+scheduler:
+  extraArgs:
+    - name: bind-address
+      value: 127.0.0.1
+---
+apiVersion: kubelet.config.k8s.io/v1beta1
+kind: KubeletConfiguration
+cgroupDriver: systemd
+failSwapOn: true
+clusterDNS:
+  - 10.96.0.10
+clusterDomain: cluster.local
+rotateCertificates: true
+serverTLSBootstrap: true
+healthzBindAddress: 127.0.0.1
+healthzPort: 10248
+---
+apiVersion: kubeproxy.config.k8s.io/v1alpha1
+kind: KubeProxyConfiguration
+mode: iptables
+clusterCIDR: 10.244.0.0/16

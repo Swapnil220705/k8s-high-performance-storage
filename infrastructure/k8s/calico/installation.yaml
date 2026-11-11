@@ -1,0 +1,42 @@
+# ==============================================================================
+# Calico v3.33.0 Tigera Operator Custom Resources Configuration
+# Project: Deploy High-Performance Storage for Kubernetes (SWFW_5S_08)
+# Pinned Release: Calico v3.33.0 (Tigera Operator v1.44.0)
+# Prerequisite Upstream Manifests (applied prior to this file):
+#   1. https://raw.githubusercontent.com/projectcalico/calico/v3.33.0/manifests/operator-crds.yaml
+#   2. https://raw.githubusercontent.com/projectcalico/calico/v3.33.0/manifests/tigera-operator.yaml
+#
+# Architecture Notes:
+#   - CIDR (10.244.0.0/16) matches kubeadm ClusterConfiguration.networking.podSubnet.
+#   - Pure Routed BGP (encapsulation: None) eliminates VXLAN/IPIP tunnel overhead
+#     on same-Layer-2 college laboratory subnets, preserving MTU and NVMe-oF
+#     throughput.
+#   - If physical cluster nodes span separate routed L3 VLANs without BGP router
+#     peering, change `encapsulation: None` to `encapsulation: VXLANCrossSubnet`.
+#   - IP Autodetection uses Kubernetes NodeInternalIP (requires passing --node-ip
+#     to kubelet at bootstrap, avoiding brittle hardcoded NIC names).
+# ==============================================================================
+apiVersion: operator.tigera.io/v1
+kind: Installation
+metadata:
+  name: default
+spec:
+  variant: Calico
+  calicoNetwork:
+    bgp: Enabled
+    linuxDataplane: Iptables
+    nodeAddressAutodetectionV4:
+      kubernetes: NodeInternalIP
+    ipPools:
+      - name: default-ipv4-ippool
+        blockSize: 26
+        cidr: 10.244.0.0/16
+        encapsulation: None
+        natOutgoing: Enabled
+        nodeSelector: all()
+---
+apiVersion: operator.tigera.io/v1
+kind: APIServer
+metadata:
+  name: default
+spec: {}

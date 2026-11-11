@@ -1,0 +1,26 @@
+# ==============================================================================
+# Calico v3.33.0 Explicit BGP Mesh Configuration
+# Project: Deploy High-Performance Storage for Kubernetes (SWFW_5S_08)
+# Resource API: crd.projectcalico.org/v1 BGPConfiguration
+#
+# Architecture Notes:
+#   - Enables full-mesh node-to-node BGP peering across the 4-node cluster over
+#     TCP port 179 (included in the canonical physical host firewall matrix).
+#   - Uses private 2-byte Autonomous System Number (AS 64512).
+#   - Restricts advertised service ranges strictly to ClusterIP CIDR (10.96.0.0/12);
+#     does NOT advertise unnecessary external LoadBalancer/ExternalIP ranges.
+#   - Single-node local dev cluster (WSL2) cannot validate multi-node BGP mesh;
+#     BGP peering verification remains INFRASTRUCTURE-DEPENDENT.
+# ==============================================================================
+apiVersion: crd.projectcalico.org/v1
+kind: BGPConfiguration
+metadata:
+  name: default
+spec:
+  logSeverityScreen: Info
+  nodeToNodeMeshEnabled: true
+  asNumber: 64512
+  listenPort: 179
+  bindMode: NodeIP
+  serviceClusterIPs:
+    - cidr: 10.96.0.0/12
