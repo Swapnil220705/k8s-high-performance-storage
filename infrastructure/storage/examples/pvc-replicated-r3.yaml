@@ -1,0 +1,70 @@
+---
+# Isolated namespace for non-destructive Mayastor volume provisioning and
+# write/read persistence verification tests (enforces Pod Security restricted).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: mayastor-verification
+  labels:
+    app.kubernetes.io/name: mayastor-verification
+    app.kubernetes.io/part-of: k8s-high-performance-storage
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/audit: restricted
+    pod-security.kubernetes.io/warn: restricted
+---
+# Example 3-replica Filesystem PersistentVolumeClaim (ext4 over NVMe-oF TCP)
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mayastor-r3-fs-verify
+  namespace: mayastor-verification
+  labels:
+    app.kubernetes.io/name: mayastor-verification
+    app.kubernetes.io/component: pvc-filesystem
+    app.kubernetes.io/part-of: k8s-high-performance-storage
+spec:
+  accessModes:
+    - ReadWriteOnce
+  volumeMode: Filesystem
+  storageClassName: mayastor-nvme-r3-ext4
+  resources:
+    requests:
+      storage: 2Gi
+---
+# Example 3-replica Raw Block PersistentVolumeClaim (KubeVirt RWO VM root disk pattern)
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mayastor-r3-block-verify
+  namespace: mayastor-verification
+  labels:
+    app.kubernetes.io/name: mayastor-verification
+    app.kubernetes.io/component: pvc-block
+    app.kubernetes.io/part-of: k8s-high-performance-storage
+spec:
+  accessModes:
+    - ReadWriteOnce
+  volumeMode: Block
+  storageClassName: mayastor-nvme-r3-block
+  resources:
+    requests:
+      storage: 2Gi
+# Experimental RWX Raw Block Pattern (for M4 KubeVirt live-migration testing ONLY):
+# Native Mayastor CSI v2.12.2 requires BOTH `volumeMode: Block` and StorageClass `rwxBlock: "true"`.
+# General ReadWriteMany Filesystem workloads remain outside Mayastor native RWX scope and will use
+# the in-cluster Ganesha NFS gateway planned in M4/M5.
+# ---
+# apiVersion: v1
+# kind: PersistentVolumeClaim
+# metadata:
+#   name: mayastor-r3-block-rwx-experimental
+#   namespace: mayastor-verification
+# spec:
+#   accessModes:
+#     - ReadWriteMany
+#   volumeMode: Block
+#   storageClassName: mayastor-nvme-r3-block-rwx
+#   resources:
+#     requests:
+#       storage: 2Gi

@@ -1,0 +1,72 @@
+---
+# Least-privilege Pod verifying persistent write, fsync flush, and SHA-256 readback
+# integrity on the 3-replica Mayastor NVMe-oF PVC (`mayastor-r3-fs-verify`).
+# After verifying initial pass logs:
+#   kubectl delete -n mayastor-verification pod mayastor-integrity-verifier
+#   kubectl apply -f infrastructure/storage/examples/pod-verify-integrity.yaml
+# Re-running verifies data written before deletion persists across NVMe-oF detach/re-attach.
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mayastor-integrity-verifier
+  namespace: mayastor-verification
+  labels:
+    app.kubernetes.io/name: mayastor-integrity-verifier
+    app.kubernetes.io/component: storage-verification
+    app.kubernetes.io/part-of: k8s-high-performance-storage
+spec:
+  restartPolicy: Never
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 10001
+    runAsGroup: 10001
+    fsGroup: 10001
+    seccompProfile:
+      type: RuntimeDefault
+  containers:
+    - name: integrity-check
+      image: "docker.io/library/busybox:1.37.0"
+      imagePullPolicy: IfNotPresent
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: true
+        capabilities:
+          drop:
+            - ALL
+      command:
+        - /bin/sh
+        - -ec
+        - |
+          DATA_FILE="/data/mayastor-verify.bin"
+          SUM_FILE="/data/mayastor-verify.sha256"
+          if [ ! -f "${DATA_FILE}" ] || [ ! -f "${SUM_FILE}" ]; then
+            echo "[INFO] Writing deterministic 16MiB payload with fsync..."
+            dd if=/dev/zero bs=1048576 count=16 2>/dev/null | tr '\000' 'M' > "${DATA_FILE}"
+            sync
+            sha256sum "${DATA_FILE}" > "${SUM_FILE}"
+            sync
+            echo "[INFO] Recorded checksum: $(cat "${SUM_FILE}")"
+          else
+            echo "[INFO] Existing payload detected; verifying persistence across pod lifecycle..."
+          fi
+          sha256sum -c "${SUM_FILE}"
+          echo "[PASS] Mayastor volume write/read SHA-256 verification succeeded."
+      resources:
+        requests:
+          cpu: "100m"
+          memory: "64Mi"
+        limits:
+          cpu: "250m"
+          memory: "128Mi"
+      volumeMounts:
+        - name: verify-vol
+          mountPath: /data
+        - name: tmp-scratch
+          mountPath: /tmp
+  volumes:
+    - name: verify-vol
+      persistentVolumeClaim:
+        claimName: mayastor-r3-fs-verify
+    - name: tmp-scratch
+      emptyDir:
+        sizeLimit: 16Mi

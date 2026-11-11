@@ -1,0 +1,17 @@
+# ==============================================================================
+# OpenEBS Mayastor Namespace Manifest
+# Project: Deploy High-Performance Storage for Kubernetes (SWFW_5S_08)
+# Security Context: Enforces Pod Security Admission `privileged` because
+#                   io-engine and csi-node strictly require host /dev/hugepages,
+#                   nvme-tcp host networking, and raw block device access.
+# ==============================================================================
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: openebs
+  labels:
+    app.kubernetes.io/name: openebs
+    app.kubernetes.io/part-of: k8s-high-performance-storage
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/audit: privileged
+    pod-security.kubernetes.io/warn: privileged

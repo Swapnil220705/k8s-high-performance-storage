@@ -1,0 +1,115 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "description": "DiskPool configures an OpenEBS Mayastor SPDK storage pool bound to a block device on a worker node (openebs/mayastor-control-plane v2.12.2, apiVersion openebs.io/v1beta3).",
+  "type": "object",
+  "required": [
+    "apiVersion",
+    "kind",
+    "metadata",
+    "spec"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "apiVersion": {
+      "type": "string",
+      "enum": [
+        "openebs.io/v1beta3"
+      ]
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "DiskPool"
+      ]
+    },
+    "metadata": {
+      "type": "object"
+    },
+    "spec": {
+      "type": "object",
+      "required": [
+        "node",
+        "disks"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "node": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Kubernetes worker node name hosting the Mayastor io-engine pod."
+        },
+        "disks": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": "Block device path or URI (for example /dev/disk/by-id/<id> or uring:///dev/disk/by-id/<id>)."
+        },
+        "topology": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "labelled": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "string"
+              },
+              "description": "Topology labels applied to this pool for StorageClass placement matching."
+            }
+          }
+        },
+        "encryptionConfig": {
+          "type": "object",
+          "required": [
+            "source"
+          ],
+          "additionalProperties": false,
+          "properties": {
+            "source": {
+              "type": "object",
+              "required": [
+                "secret"
+              ],
+              "additionalProperties": false,
+              "properties": {
+                "secret": {
+                  "type": "object",
+                  "required": [
+                    "name"
+                  ],
+                  "additionalProperties": false,
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "clusterSize": {
+          "type": "string",
+          "description": "Optional SPDK blobstore cluster size override."
+        },
+        "maxExpansion": {
+          "type": "string",
+          "description": "Optional maximum expected pool expansion factor or absolute size (for example 5x, 200GiB, 2TiB)."
+        }
+      }
+    },
+    "status": {
+      "type": "object"
+    }
+  },
+  "x-kubernetes-group-version-kind": [
+    {
+      "group": "openebs.io",
+      "kind": "DiskPool",
+      "version": "v1beta3"
+    }
+  ]
+}

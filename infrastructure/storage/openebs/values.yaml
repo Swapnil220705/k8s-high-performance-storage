@@ -1,0 +1,274 @@
+# ==============================================================================
+# OpenEBS Umbrella Chart v4.6.2 (Mayastor v2.12.2) Production Values
+# Project: Deploy High-Performance Storage for Kubernetes (SWFW_5S_08)
+# Target Cluster: 4-Node Kubernetes v1.36.6 + Ubuntu 24.04 (1 CP + 3 Workers)
+#
+# Verified Key Hierarchy: openebs/openebs v4.6.2 -> mayastor v2.12.2
+# Safety Notice:
+#   - Requires >= 3 storage workers labeled `openebs.io/engine=mayastor`.
+#   - Reserves 2 dedicated SPDK busy-polling CPU cores & 2 GiB 2MiB HugePages
+#     per worker node. Do NOT apply to WSL2 local development cluster.
+# ==============================================================================
+
+global:
+  imageRegistry: ""
+  imagePullPolicy: IfNotPresent
+
+openebs-crds:
+  csi:
+    volumeSnapshots:
+      enabled: true
+      keep: true
+
+# Explicit Storage Engine Toggles
+engines:
+  local:
+    lvm:
+      enabled: false
+    zfs:
+      enabled: false
+    rawfile:
+      enabled: false
+    # Required by internal mayastor-etcd-localpv StatefulSet persistence;
+    # general-purpose hostpath StorageClass exposure is disabled below.
+    hostpath:
+      enabled: true
+  replicated:
+    mayastor:
+      enabled: true
+
+# Restrict dynamic localpv-provisioner strictly to internal etcd metadata PVCs
+localpv-provisioner:
+  rbac:
+    create: true
+  globalImageRegistryOverride: true
+  helperPod:
+    image:
+      registry: docker.io
+  localpv:
+    image:
+      registry: docker.io
+    priorityClassName: "openebs-cluster-critical"
+  hostpathClass:
+    enabled: false
+  analytics:
+    enabled: false
+
+# Disable umbrella Loki/MinIO/Alloy log aggregation; M9 provides Prometheus+Grafana
+loki:
+  enabled: false
+
+alloy:
+  enabled: false
+
+# Replicated PV Mayastor Subchart Configuration (pinned v2.12.2)
+mayastor:
+  crds:
+    enabled: false
+  localpv-provisioner:
+    enabled: false
+  loki:
+    enabled: false
+  alloy:
+    enabled: false
+
+  image:
+    registry: docker.io
+    repo: openebs
+    tag: v2.12.2
+    pullPolicy: IfNotPresent
+
+  nodeSelector:
+    kubernetes.io/arch: amd64
+
+  base:
+    default_req_timeout: 5s
+    cache_poll_period: 30s
+    logging:
+      format: pretty
+      color: true
+    metrics:
+      enabled: true
+      port: 9502
+    jaeger:
+      enabled: false
+
+  csi:
+    image:
+      registry: registry.k8s.io
+      repo: sig-storage
+      pullPolicy: IfNotPresent
+      provisionerTag: v5.2.0
+      attacherTag: v4.8.1
+      snapshotterTag: v8.2.0
+      snapshotControllerTag: v8.2.0
+      registrarTag: v2.13.0
+      resizerTag: v1.13.2
+    controller:
+      logLevel: info
+      maxCreateVolume: 10
+      snapshotController:
+        enabled: true
+      resources:
+        requests:
+          cpu: "16m"
+          memory: "64Mi"
+        limits:
+          cpu: "32m"
+          memory: "128Mi"
+    node:
+      logLevel: info
+      kubeletDir: /var/lib/kubelet
+      port: 10199
+      initContainers:
+        enabled: true
+      nvme:
+        ctrl_loss_tmo: "1980"
+        tcpFallback: true
+      resources:
+        requests:
+          cpu: "100m"
+          memory: "64Mi"
+        limits:
+          cpu: "100m"
+          memory: "128Mi"
+
+  io_engine:
+    logLevel: info
+    api: "v1"
+    cpuCount: "2"
+    coreList: []
+    port: 10124
+    nodeSelector:
+      openebs.io/engine: mayastor
+      kubernetes.io/arch: amd64
+    interruptMode:
+      enabled: false
+    target:
+      nvmf:
+        rdma:
+          enabled: false
+        ptpl: true
+        maxNamespaces: 4096
+    nvme:
+      ioTimeout: "110s"
+      adminTimeout: "30s"
+      keepAliveTimeout: "10s"
+      tcp:
+        maxQueueDepth: "32"
+        maxQpairsPerCtrl: "32"
+        numSharedBuf: "2047"
+        bufCacheSize: "64"
+        inCapsuleDataSize: "4096"
+        maxIoSize: "131072"
+        ioUnitSize: "131072"
+    resources:
+      requests:
+        cpu: "2"
+        memory: "1Gi"
+        hugepages2Mi: "2Gi"
+      limits:
+        cpu: "2"
+        memory: "1Gi"
+        hugepages2Mi: "2Gi"
+
+  agents:
+    core:
+      logLevel: info
+      minTimeouts: true
+      maxCreateVolume: 10
+      volumeHealth: true
+      capacity:
+        thin:
+          poolCommitment: "250%"
+          volumeCommitment: "40%"
+          volumeCommitmentInitial: "40%"
+          snapshotCommitment: "40%"
+      rebuild:
+        partial:
+          enabled: true
+          waitPeriod: "10m"
+      resources:
+        requests:
+          cpu: "500m"
+          memory: "32Mi"
+        limits:
+          cpu: "1000m"
+          memory: "128Mi"
+    ha:
+      enabled: true
+      node:
+        logLevel: info
+        port: 50053
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "64Mi"
+          limits:
+            cpu: "100m"
+            memory: "64Mi"
+      cluster:
+        logLevel: info
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "16Mi"
+          limits:
+            cpu: "100m"
+            memory: "64Mi"
+
+  operators:
+    pool:
+      logLevel: info
+      resources:
+        requests:
+          cpu: "50m"
+          memory: "16Mi"
+        limits:
+          cpu: "100m"
+          memory: "32Mi"
+
+  apis:
+    rest:
+      logLevel: info
+      replicaCount: 1
+      service:
+        type: ClusterIP
+      resources:
+        requests:
+          cpu: "50m"
+          memory: "32Mi"
+        limits:
+          cpu: "100m"
+          memory: "64Mi"
+
+  etcd:
+    enabled: true
+    replicaCount: 3
+    clusterDomain: cluster.local
+    podAntiAffinityPreset: "hard"
+    localpvScConfig:
+      enabled: true
+      name: "mayastor-etcd-localpv"
+      basePath: "/var/local/openebs/localpv-hostpath/etcd"
+      reclaimPolicy: Delete
+      volumeBindingMode: WaitForFirstConsumer
+    persistence:
+      enabled: true
+      storageClass: "mayastor-etcd-localpv"
+      size: 2Gi
+
+  eventing:
+    enabled: true
+    aggregator:
+      enabled: true
+      logLevel: info
+      dirSizeLimit: "100Mi"
+
+  obs:
+    callhome:
+      enabled: false
+
+  # StorageClasses managed declaratively in infrastructure/storage/examples/storageclasses.yaml
+  storageClass:
+    enabled: false

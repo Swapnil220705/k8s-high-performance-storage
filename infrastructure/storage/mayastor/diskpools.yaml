@@ -1,0 +1,73 @@
+---
+# OpenEBS Mayastor DiskPool Manifests (openebs.io/v1beta3)
+# Chart Target: openebs/openebs v4.6.2 (Mayastor v2.12.2)
+#
+# CRITICAL SAFETY WARNING — DO NOT APPLY AS-IS OR GUESS DEVICE PATHS:
+#   1. Replace <WORKER_NODE_1..3> with verified `kubectl get nodes` names that carry
+#      the label `openebs.io/engine=mayastor`.
+#   2. Replace <RAW_NVME_BY_ID_WORKER_1..3> with verified `/dev/disk/by-id/<wwn-or-nvme-eui>`
+#      paths pointing exclusively to EMPTY, UNMOUNTED, UNPARTITIONED NVMe devices whose
+#      institutional ownership and wipe authorization have been explicitly confirmed.
+#   3. Always prefer persistent `/dev/disk/by-id/...` (never ephemeral `/dev/nvme0n1` unless
+#      verified immutable), or explicit Mayastor URI prefixes (`aio:///dev/...`, `uring:///dev/...`,
+#      or raw SPDK `pcie://<BDF>` when bound to vfio-pci/uio_pci_generic).
+#   4. Never run on the WSL2 single-node development cluster (lacks raw NVMe & 2Gi HugePages).
+apiVersion: openebs.io/v1beta3
+kind: DiskPool
+metadata:
+  name: mayastor-pool-worker-1
+  namespace: openebs
+  labels:
+    app.kubernetes.io/name: diskpool
+    app.kubernetes.io/instance: mayastor-pool-worker-1
+    app.kubernetes.io/component: storage-pool
+    app.kubernetes.io/part-of: k8s-high-performance-storage
+    app.kubernetes.io/version: "2.12.2"
+spec:
+  node: "<WORKER_NODE_1>"
+  disks:
+    - "/dev/disk/by-id/<RAW_NVME_BY_ID_WORKER_1>"
+  topology:
+    labelled:
+      openebs.io/storage-tier: "nvme-tcp"
+      topology.kubernetes.io/zone: "rack-1"
+---
+apiVersion: openebs.io/v1beta3
+kind: DiskPool
+metadata:
+  name: mayastor-pool-worker-2
+  namespace: openebs
+  labels:
+    app.kubernetes.io/name: diskpool
+    app.kubernetes.io/instance: mayastor-pool-worker-2
+    app.kubernetes.io/component: storage-pool
+    app.kubernetes.io/part-of: k8s-high-performance-storage
+    app.kubernetes.io/version: "2.12.2"
+spec:
+  node: "<WORKER_NODE_2>"
+  disks:
+    - "/dev/disk/by-id/<RAW_NVME_BY_ID_WORKER_2>"
+  topology:
+    labelled:
+      openebs.io/storage-tier: "nvme-tcp"
+      topology.kubernetes.io/zone: "rack-2"
+---
+apiVersion: openebs.io/v1beta3
+kind: DiskPool
+metadata:
+  name: mayastor-pool-worker-3
+  namespace: openebs
+  labels:
+    app.kubernetes.io/name: diskpool
+    app.kubernetes.io/instance: mayastor-pool-worker-3
+    app.kubernetes.io/component: storage-pool
+    app.kubernetes.io/part-of: k8s-high-performance-storage
+    app.kubernetes.io/version: "2.12.2"
+spec:
+  node: "<WORKER_NODE_3>"
+  disks:
+    - "/dev/disk/by-id/<RAW_NVME_BY_ID_WORKER_3>"
+  topology:
+    labelled:
+      openebs.io/storage-tier: "nvme-tcp"
+      topology.kubernetes.io/zone: "rack-3"

@@ -1,0 +1,90 @@
+---
+# OpenEBS Mayastor StorageClasses (OpenEBS 4.6.2 / Mayastor v2.12.2 CSI)
+# Provisioner verified in openebs/mayastor-control-plane v2.12.2 (`utils::csi_plugin_name`).
+# Note: Thin-provisioning / overcommit behavior in Mayastor v2.12.2 is governed globally via
+# `agents.core.capacity.thin.*` in infrastructure/storage/openebs/values.yaml rather than a
+# per-StorageClass `thin` parameter (which does not exist in v2.12.2 CSI Parameters).
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: mayastor-nvme-r3-ext4
+  labels:
+    app.kubernetes.io/name: mayastor
+    app.kubernetes.io/instance: openebs
+    app.kubernetes.io/component: storageclass
+    app.kubernetes.io/part-of: k8s-high-performance-storage
+    app.kubernetes.io/version: "2.12.2"
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "false"
+    description: "Production 3-replica Mayastor NVMe-oF TCP Filesystem (ext4) StorageClass"
+provisioner: io.openebs.csi-mayastor
+allowVolumeExpansion: true
+reclaimPolicy: Delete
+volumeBindingMode: WaitForFirstConsumer
+parameters:
+  protocol: "nvmf"
+  repl: "3"
+  fsType: "ext4"
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: mayastor-nvme-r3-block
+  labels:
+    app.kubernetes.io/name: mayastor
+    app.kubernetes.io/instance: openebs
+    app.kubernetes.io/component: storageclass
+    app.kubernetes.io/part-of: k8s-high-performance-storage
+    app.kubernetes.io/version: "2.12.2"
+  annotations:
+    description: "Production 3-replica Mayastor NVMe-oF TCP raw Block StorageClass for KubeVirt VM RWO disks"
+provisioner: io.openebs.csi-mayastor
+allowVolumeExpansion: true
+reclaimPolicy: Retain
+volumeBindingMode: WaitForFirstConsumer
+parameters:
+  protocol: "nvmf"
+  repl: "3"
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: mayastor-nvme-r3-block-rwx
+  labels:
+    app.kubernetes.io/name: mayastor
+    app.kubernetes.io/instance: openebs
+    app.kubernetes.io/component: storageclass
+    app.kubernetes.io/part-of: k8s-high-performance-storage
+    app.kubernetes.io/version: "2.12.2"
+  annotations:
+    storage.k8s.io/maturity: "experimental"
+    description: "EXPERIMENTAL 3-replica Mayastor NVMe-oF RWX raw Block StorageClass (requires volumeMode: Block; KubeVirt migration handoff testing only; general RWX Filesystem uses NFS gateway)"
+provisioner: io.openebs.csi-mayastor
+allowVolumeExpansion: true
+reclaimPolicy: Retain
+volumeBindingMode: WaitForFirstConsumer
+parameters:
+  protocol: "nvmf"
+  repl: "3"
+  rwxBlock: "true"
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: mayastor-nvme-r1-dev
+  labels:
+    app.kubernetes.io/name: mayastor
+    app.kubernetes.io/instance: openebs
+    app.kubernetes.io/component: storageclass
+    app.kubernetes.io/part-of: k8s-high-performance-storage
+    app.kubernetes.io/version: "2.12.2"
+  annotations:
+    description: "Single-replica NVMe-oF TCP baseline/dev StorageClass (ZERO fault tolerance; for latency/throughput comparison against repl=3 only)"
+provisioner: io.openebs.csi-mayastor
+allowVolumeExpansion: true
+reclaimPolicy: Delete
+volumeBindingMode: Immediate
+parameters:
+  protocol: "nvmf"
+  repl: "1"
+  fsType: "ext4"

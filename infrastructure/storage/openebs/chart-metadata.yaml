@@ -1,0 +1,58 @@
+# ==============================================================================
+# OpenEBS & Mayastor Pinned Version & Image Metadata
+# Project: Deploy High-Performance Storage for Kubernetes (SWFW_5S_08)
+# Verification Source: https://openebs.github.io/openebs (inspected 2026-11-11)
+# ==============================================================================
+metadata:
+  verificationDate: "2026-11-11"
+  helmRepository:
+    name: openebs
+    url: https://openebs.github.io/openebs
+  umbrellaChart:
+    name: openebs
+    version: "4.6.2"
+    appVersion: "4.6.2"
+  replicatedStorageSubchart:
+    name: mayastor
+    version: "2.12.2"
+    appVersion: "2.12.2"
+  supportingSubcharts:
+    openebsCrds: "4.6.2"
+    localpvProvisioner: "4.6.0" # Required solely for internal etcd statefulset localpv; public SC disabled
+    etcd: "12.0.14"
+    nats: "0.19.14"
+  disabledEnginesAndAddons:
+    - engines.local.lvm (lvm-localpv 1.10.1)
+    - engines.local.zfs (zfs-localpv 2.11.2)
+    - engines.local.rawfile (rawfile-localpv 0.15.3)
+    - loki (6.29.0) & alloy (1.0.1)
+    - mayastor.obs.callhome
+  compatibilityEvidence:
+    upstreamE2ETestedKubernetes: "v1.35.6"
+    targetBaselineKubernetes: "v1.36.6"
+    qualificationGap: "Mayastor v2.12.2 automated E2E tests are published up to Kubernetes v1.35.6; behavior on v1.36.6 requires experimental validation on target nodes."
+  pinnedImages:
+    controlPlaneAndAgents:
+      - docker.io/openebs/mayastor-agent-core:v2.12.2
+      - docker.io/openebs/mayastor-agent-ha-cluster:v2.12.2
+      - docker.io/openebs/mayastor-agent-ha-node:v2.12.2
+      - docker.io/openebs/mayastor-api-rest:v2.12.2
+      - docker.io/openebs/mayastor-csi-controller:v2.12.2
+      - docker.io/openebs/mayastor-csi-node:v2.12.2
+      - docker.io/openebs/mayastor-eventing-aggregator:v2.12.2
+      - docker.io/openebs/mayastor-operator-diskpool:v2.12.2
+    dataPlaneAndMetrics:
+      - docker.io/openebs/mayastor-io-engine:v2.12.2
+      - docker.io/openebs/mayastor-metrics-exporter-io-engine:v2.12.2
+    backingServicesAndCsiSidecars:
+      - docker.io/openebs/etcd:3.6.4-debian-12-r0
+      - docker.io/nats:2.9.17-alpine
+      - docker.io/openebs/provisioner-localpv:4.6.0
+      - docker.io/openebs/alpine-bash:4.6.0
+      - docker.io/openebs/alpine-sh:4.6.0
+      - registry.k8s.io/sig-storage/csi-attacher:v4.8.1
+      - registry.k8s.io/sig-storage/csi-provisioner:v5.2.0
+      - registry.k8s.io/sig-storage/csi-snapshotter:v8.2.0
+      - registry.k8s.io/sig-storage/snapshot-controller:v8.2.0
+      - registry.k8s.io/sig-storage/csi-node-driver-registrar:v2.13.0
+      - registry.k8s.io/sig-storage/csi-resizer:v1.13.2

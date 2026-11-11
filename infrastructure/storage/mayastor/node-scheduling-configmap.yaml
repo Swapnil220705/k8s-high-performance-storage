@@ -1,0 +1,38 @@
+---
+# OpenEBS Mayastor Worker Node Scheduling & Prerequisite Reference Profile
+# Source Target: Production/Lab 4-node Kubernetes cluster (1 control-plane + 3 NVMe storage workers)
+# Host Requirements (per worker node running io-engine):
+#   - CPU: x86_64 with SSE4.2 + >=2 dedicated CPU cores for SPDK polling
+#   - Memory: >=1024 x 2MiB HugePages (2GiB locked) + >=1GiB container RAM + OS/kubelet headroom
+#   - Kernel: nvme_tcp, ext4 (optional xfs) loaded; hugepages-2Mi mounted cleanly
+#
+# Required Node Labeling Commands (run only AFTER validate-mayastor-prerequisites.sh passes):
+#   kubectl label node <WORKER_NODE_1> openebs.io/engine=mayastor topology.kubernetes.io/zone=rack-1 --overwrite
+#   kubectl label node <WORKER_NODE_2> openebs.io/engine=mayastor topology.kubernetes.io/zone=rack-2 --overwrite
+#   kubectl label node <WORKER_NODE_3> openebs.io/engine=mayastor topology.kubernetes.io/zone=rack-3 --overwrite
+#
+# WARNING: Never apply `openebs.io/engine=mayastor` on control-plane nodes or the 1-node WSL2 dev node.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mayastor-node-scheduling-profile
+  namespace: openebs
+  labels:
+    app.kubernetes.io/name: mayastor
+    app.kubernetes.io/instance: openebs
+    app.kubernetes.io/component: node-scheduling
+    app.kubernetes.io/part-of: k8s-high-performance-storage
+    app.kubernetes.io/version: "2.12.2"
+data:
+  engineLabelKey: "openebs.io/engine"
+  engineLabelValue: "mayastor"
+  requiredArchitecture: "amd64"
+  minimumIoEngineWorkerNodes: "3"
+  defaultReplicaFactor: "3"
+  spdkCpuCoresPerNode: "2"
+  hugePageSize: "2Mi"
+  minimumHugePagesCount: "1024"
+  hugePagesMemoryLimit: "2Gi"
+  ioEngineContainerMemory: "1Gi"
+  requiredKernelModules: "nvme_tcp,ext4"
+  nvmeofTcpPorts: "10124,8420,4421"
