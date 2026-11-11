@@ -1,273 +1,106 @@
-# Deploy High-Performance Storage for Kubernetes
+# Deploy High-Performance Storage for Kubernetes (`SWFW_5S_08`)
 
-**Project ID:** SWFW_5S_08  
 **Program:** Zoho SETU — College Student Project Program  
-**Category:** Cloud Infrastructure / Kubernetes / Virtualization / Distributed Storage / Systems Engineering  
-**Repository Branch:** `main`  
-**Status:** In Progress (M1–M9 Implemented & Statically/Safety Validated across Cluster, Mayastor, KubeVirt, Resilience, FIO, Observability & 9-Stage Demo; Live Multi-Node Execution & Benchmarks INFRASTRUCTURE-DEPENDENT)  
+**Branch:** `main`  
+**Verification Model:** Three-State Honest Tracking (`IMPLEMENTED` | `VALIDATED` | `INFRASTRUCTURE-DEPENDENT`)  
+**Primary Submission Artifacts:** [Technical Report](reports/final/Zoho_SETU_High_Performance_Kubernetes_Storage_Report.md) · [Presentation Deck](reports/final/Zoho_SETU_Project_Presentation.pptx) · [Submission Checklist](reports/final/SUBMISSION_CHECKLIST.md) · [Final Project Status](reports/final/FINAL_PROJECT_STATUS.md)
 
 ---
 
-## 1. Executive Summary & Problem Statement
+## 1. Problem Statement & Core Capabilities
 
-Modern cloud-native environments increasingly converge containerized microservices and virtual machine workloads onto unified orchestration platforms. Kubernetes, through extensions like **KubeVirt**, enables organizations to run legacy and monolithic virtual machines alongside containers. However, running I/O-intensive virtualized workloads inside Kubernetes introduces critical storage architectural challenges:
+Running containerized virtual machines (`KubeVirt`) on Kubernetes often forces an uncomfortable trade-off between **near-native NVMe storage performance** (kernel VFS/filesystem overheads vs. SPDK NVMe-oF) and **workload mobility** (`ReadWriteOnce` block storage vs. `ReadWriteMany` live migration).
 
-- **Kernel I/O Bottlenecks:** Traditional Linux kernel storage stacks (VFS, block layer, context switching, interrupt handling) introduce latency overheads that degrade high-throughput, low-latency NVMe performance.
-- **Data Replication & Fault Tolerance:** Cloud-native storage must provide synchronous replication across failure domains without sacrificing NVMe wire speeds.
-- **Workload Portability & Migration:** Virtual machine live migration requires persistent storage volumes to be accessible across nodes, creating architectural tension between high-speed local NVMe replicated block storage (typically ReadWriteOnce / RWO) and cluster-wide shared storage (ReadWriteMany / RWX) requirements.
-- **Dynamic Resource Adaptation:** Production virtualization requires dynamic resource adjustments (CPU, memory, storage, and network interface hot-plugging) without VM restarts or workload interruptions.
-
-This project investigates, designs, deploys, and benchmarks a high-performance cloud-native storage architecture centered on **OpenEBS Mayastor**, leveraging the **Storage Performance Development Kit (SPDK)** and **NVMe over Fabrics (NVMe-oF)** to service **KubeVirt** virtual machine workloads on a multi-node Kubernetes cluster.
-
-> [!IMPORTANT]
-> **Project Phase & Strategic Alignment (ADR-011):** This project has completed **Phase 1 Infrastructure Discovery (Chunks 0 through 1.11)**, **Chunk 2.0 Readiness Planning**, **Chunk 2.1 Strategy Realignment**, **Milestone M1 Development Environment Preparation & Automated Tooling**, **Milestone M2 Kubernetes Cluster Architecture & Multi-Node Provisioning**, and **Milestone M3 OpenEBS Mayastor Storage Engine & Volume Provisioning**. In accordance with **ADR-011**, the complete 4-node Mayastor/KubeVirt architecture remains fully preserved as the target specification, while development and validation proceed decoupled from institutional hardware gating per the 10-milestone roadmap ([`docs/development-roadmap.md`](docs/development-roadmap.md)). Local K3s single-node validation (`v1.36.6+k3s1`) and static/Helm/schema checks (`openebs 4.6.2` / Mayastor `2.12.2`) are empirical on WSL2; multi-node bootstrap, Calico BGP mesh, live Mayastor SPDK/NVMe-oF pools, and KubeVirt remain `INFRASTRUCTURE-DEPENDENT` until target deployment.
+This project designs, automates, statically validates, and prepares for multi-node evaluation a production-oriented **4-node Kubernetes storage and virtualization stack**:
+- **High-Throughput Replicated Storage:** OpenEBS `4.6.2` / Replicated PV Mayastor `v2.12.2` (`SPDK`, `2` dedicated cores + `2Gi` 2MiB HugePages/worker, NVMe-oF TCP `:8420/:4421`, $N=3$ synchronous replication).
+- **VM Orchestration & Storage Tiers:** KubeVirt `v1.9.1` + CDI `v1.66.1` supporting RWO Filesystem (`mayastor-nvme-r3-ext4`), direct RWO Raw Block (`mayastor-nvme-r3-block`), **Default Safe NFSv4.1 RWX Migration** (`csi-driver-nfs v4.9.0`), and **Opt-In Experimental Mayastor RWX Block** (`mayastor-nvme-r3-block-rwx`).
+- **Live Migration & Hot-Plugging:** TLS-encrypted pre-copy `MigrationPolicy`/`VMIM` plus `LiveUpdate` CPU socket (`2 -> 4`), guest memory (`2Gi -> 4Gi`), and SCSI volume (`virtctl addvolume`/`removevolume`) hot-plugging *(Multus NIC hot-plug deferred)*.
+- **Resilience, Benchmarking & Observability:** Reversible fault-recovery drills + SHA-256 checksum pipeline, 6 versioned `fio 3.36` profiles with environment-isolated Python summarization, and `kube-prometheus-stack v93.2.0` (`Prometheus v3.16.0`, `Grafana 13.3.1`) with source-verified alerts and 3 dashboards.
 
 ---
 
-## 2. Motivation and Objectives
+## 2. Target Architecture Overview
 
-### 2.1 Motivation
-Enterprise workloads demanding virtualization within Kubernetes require storage engines capable of saturating modern NVMe hardware while maintaining cloud-native elasticity. Traditional distributed file systems often suffer from protocol overheads and kernel context switching. By leveraging user-space polling-mode drivers via SPDK and NVMe-oF transport protocols within Mayastor, near-bare-metal I/O performance can theoretically be achieved for KubeVirt VMs.
-
-### 2.2 Core Project Objectives
-1. **Multi-Node Cluster Deployment:** Establish a 4-node Kubernetes cluster (1 Control Plane + 3 dedicated Worker nodes) using `kubeadm` and `containerd`.
-2. **High-Performance Replicated Block Storage:** Deploy OpenEBS Mayastor utilizing dedicated block devices to construct multi-node `DiskPools`, provisioning synchronous replicated storage via NVMe-oF.
-3. **Cloud-Native Virtualization Integration:** Install and configure KubeVirt, provisioning virtual machines backed by high-performance persistent volumes.
-4. **Live Migration & Shared Storage Evaluation:** Evaluate live migration mechanics for KubeVirt VMs across worker nodes, comparing replicated block storage (RWO) with shared filesystem (RWX via NFS gateway) semantics.
-5. **Runtime Resource Hot-Plugging:** Systematically test and validate dynamic hot-plugging of vCPU, memory, storage volumes, and network interfaces on running KubeVirt guest VMs.
-6. **Empirical Benchmarking & Failure Analysis:** Execute comprehensive `fio` benchmarking matrices (IOPS, throughput, latency percentiles) across raw disk, container volumes, and virtual machines, followed by simulated disk and node failure recovery drills.
-7. **Comprehensive Observability:** Deploy Prometheus and Grafana dashboards capturing node, storage pool, engine, and virtual machine metrics in real time.
+See standalone architecture diagrams under [`docs/diagrams/`](docs/diagrams/):
+1. [Four-Node Kubernetes Architecture](docs/diagrams/01-four-node-kubernetes-architecture.md)
+2. [Mayastor Storage & Replication Flow](docs/diagrams/02-mayastor-storage-and-replication.md)
+3. [VM Storage Tiers & Live Migration](docs/diagrams/03-vm-storage-and-live-migration.md)
+4. [Monitoring & Observability Architecture](docs/diagrams/04-monitoring-and-observability.md)
+5. [Deployment & Validation Workflow](docs/diagrams/05-deployment-and-validation-workflow.md)
 
 ---
 
-## 3. Proposed Technology Stack
+## 3. Technology Stack & Pinned Versions
 
-| Domain | Technology / Component | Planned Version / Spec | Role & Architectural Function |
-| :--- | :--- | :--- | :--- |
-| **Host Operating System** | Ubuntu Server 24.04 LTS | Linux 6.8 LTS kernel | Base OS across all bare-metal / virtual cluster nodes |
-| **Cluster Orchestration** | Kubernetes (`kubeadm`) | v1.36.x (Candidate B preferred) / v1.35.x (Candidate A comparison) | Core container orchestration and resource scheduling |
-| **Container Runtime** | `containerd` | v2.3.x LTS | OCI-compliant container runtime officially recommended for K8s 1.36+ |
-| **Cluster Networking** | Calico v3.33 (CNI) | Pure routed BGP mode | Pod-to-Pod and Node-to-Pod networking fabric without VXLAN overhead |
-| **Storage Engine** | OpenEBS Mayastor | `openebs/openebs` v4.6.2 (Mayastor v2.12.2) | SPDK-based high-performance distributed block storage engine (Ports 8420 & 4421; canonical 20-port matrix) |
-| **I/O Acceleration** | SPDK (User Space) | Integrated with Mayastor | Polled-mode NVMe driver (2 dedicated cores), zero-copy user-space I/O pipeline |
-| **Storage Protocol** | NVMe-oF (TCP) | NVMe over Fabrics | High-throughput, low-latency block transport across cluster nodes |
-| **Virtualization Layer** | KubeVirt + CDI | `KubeVirt v1.9.1` + `CDI v1.66.1` (`virtctl v1.9.0`) | Kubernetes CRD controller & DataVolume importer managing QEMU/KVM VM pods (`ADR-013`) |
-| **Hypervisor / Emulator** | QEMU / KVM | Linux KVM module (`/dev/kvm`) | Hardware-assisted virtualization within VM launcher pods |
-| **Shared Storage Gateway** | NFS Server / RWX Provisioner | `csi-driver-nfs` v4.9.0 | Comparative fallback mechanism for RWX live-migration shared storage |
-| **Benchmarking Suite** | Flexible I/O Tester (`fio`) | v3.30+ (`v3.36` locally verified) | Multi-pattern synthetic I/O matrix (`6` `.fio` profiles, `summarize-results.py`) |
-| **Metrics & Monitoring** | Prometheus & Grafana | `kube-prometheus-stack` `v93.2.0` (`Prom v3.16.0`, `Grafana 13.3.1`) | Verified Mayastor `v2.12.2` & KubeVirt `v1.9.1` ClusterIP telemetry & alerts (`ADR-015`) |
+| Subsystem | Pinned Version | Notes & Compatibility Basis |
+| :--- | :--- | :--- |
+| **Target OS / Kernel** | Ubuntu Server `24.04 LTS` (`Linux 6.8 LTS`) | Dev audited on WSL2 `Ubuntu 24.04.4 LTS` (`6.6.87.2`) |
+| **Kubernetes** | `v1.36.6` (`kubeadm.k8s.io/v1beta4`) | Active until June 2027; local API sandbox on `K3s v1.36.6+k3s1` |
+| **Container Runtime** | `containerd 2.3.x LTS` | Supported through April 2028 (`v2.3.7-k3s1.36` local K3s) |
+| **CNI Networking** | Project Calico `v3.33.0` (`tigera/operator v1.44.0`) | Pure BGP (`encapsulation: None`), Pod CIDR `10.244.0.0/16` |
+| **Storage Engine** | OpenEBS `4.6.2` / Mayastor `v2.12.2` | CI E2E tested up to `v1.35.6` (`v1.36` live execution pending) |
+| **Virtualization** | KubeVirt `v1.9.1` + CDI `v1.66.1` (`virtctl v1.9.0`) | `>=1.35 <1.37`; `/dev/kvm` enforced (`useEmulation: false`) |
+| **RWX Fallback** | `csi-driver-nfs v4.9.0` + `nfs-server-alpine:12` | `nfs-mayastor-rwx` backed by 30Gi Mayastor RWO PVC |
+| **Observability** | `kube-prometheus-stack v93.2.0` (`Prom v3.16.0`, `Grafana 13.3.1`) | Strictly internal `ClusterIP` (`:9090` / `:3000`); `promtool v3.16.0` |
+| **Benchmarking & QA** | `fio 3.36`, `Python 3.12.3`, `kubeconform v0.8.0`, `yq v4.54.3`, `shellcheck 0.9.0` | Verified offline schemas & `unittest` parser checks |
 
 ---
 
-## 4. Proposed High-Level Architecture
-
-The target architecture decouples the Kubernetes control plane from storage-capable worker nodes. Worker nodes dedicate physical storage partitions to Mayastor DiskPools, while KubeVirt schedules VM launcher pods accessing volumes over NVMe-oF.
-
-```mermaid
-flowchart TD
-    subgraph Management["Management & Orchestration Plane"]
-        CP["Kubernetes Control Plane Node<br/>(API Server, etcd, Controller Manager, Scheduler)"]
-        Prom["Prometheus & Grafana<br/>(Metrics & Telemetry)"]
-    end
-
-    subgraph DataPlane["Storage & Virtualization Worker Fleet"]
-        subgraph Worker1["Worker Node 1"]
-            KVM1["KubeVirt Launcher Pod<br/>(Guest VM: Ubuntu)"]
-            MS1["Mayastor I/O Engine (SPDK)<br/>(Nexus / Controller)"]
-            Pool1["DiskPool 1<br/>(Dedicated NVMe/SSD)"]
-        end
-
-        subgraph Worker2["Worker Node 2"]
-            KVM2["Target KubeVirt Pod<br/>(Migration Target)"]
-            MS2["Mayastor I/O Engine (SPDK)<br/>(Replica Host)"]
-            Pool2["DiskPool 2<br/>(Dedicated NVMe/SSD)"]
-        end
-
-        subgraph Worker3["Worker Node 3"]
-            MS3["Mayastor I/O Engine (SPDK)<br/>(Replica Host)"]
-            Pool3["DiskPool 3<br/>(Dedicated NVMe/SSD)"]
-        end
-    end
-
-    subgraph StorageInterconnect["High-Speed Cluster Fabric (NVMe-oF / TCP)"]
-        Fabric((NVMe-oF Network Mesh))
-    end
-
-    CP -->|Schedule & Manage| Worker1
-    CP -->|Schedule & Manage| Worker2
-    CP -->|Schedule & Manage| Worker3
-
-    KVM1 -.->|NVMe-oF Mount| MS1
-    MS1 <==>|Synchronous Replication| Fabric
-    Fabric <==> Pool1
-    Fabric <==> Pool2
-    Fabric <==> Pool3
-
-    Prom -.->|Scrape Metrics| MS1
-    Prom -.->|Scrape Metrics| MS2
-    Prom -.->|Scrape Metrics| MS3
-```
-
----
-
-## 5. Planned Capabilities Matrix
-
-All capabilities below represent project targets and will be updated as implementation proceeds:
-
-| # | Capability Area | Specific Target Feature | Verification Status (3-State) | Implementation Phase |
-| :-: | :--- | :--- | :---: | :---: |
-| 1 | **Cluster Core** | Multi-node `kubeadm` + Calico Kubernetes deployment | 🛠️ `IMPLEMENTED` / 🧪 Local K3s `v1.36.6` `VALIDATED` / 🔒 4-node `INFRASTRUCTURE-DEPENDENT` | M2 |
-| 2 | **Storage Engine** | OpenEBS `4.6.2` / Mayastor `2.12.2` deployment & HugePages validation | 🛠️ `IMPLEMENTED` / 🧪 Chart/Schema/Refusal `VALIDATED` / 🔒 Live SPDK `INFRASTRUCTURE-DEPENDENT` | M3 |
-| 3 | **Storage Pools** | Multi-node `DiskPool` (`openebs.io/v1beta3`) across raw NVMe | 🛠️ `IMPLEMENTED` / 🧪 CRD Schema `VALIDATED` / 🔒 Hardware `INFRASTRUCTURE-DEPENDENT` | M3 |
-| 4 | **Replication** | Synchronous 3-way NVMe-oF TCP StorageClasses & integrity verification | 🛠️ `IMPLEMENTED` / 🧪 Static CSI `VALIDATED` / 🔒 Multi-Node `INFRASTRUCTURE-DEPENDENT` | M3 |
-| 5 | **Virtualization** | KubeVirt `v1.9.1` + CDI `v1.66.1` operator & CRs | 🛠️ `IMPLEMENTED` / 🧪 CRD Schema & KVM Preflight `VALIDATED` / 🔒 Cluster `INFRASTRUCTURE-DEPENDENT` | Sprint 1 (M4) |
-| 6 | **VM Workloads** | Cloud-init Ubuntu VMs (RWO FS, RWO Block, NFS RWX, Exp RWX Block) | 🛠️ `IMPLEMENTED` / 🧪 Strict Schema & Dry-Run `VALIDATED` / 🔒 Live Boot `INFRASTRUCTURE-DEPENDENT` | Sprint 1 (M4–M5) |
-| 7 | **Live Migration** | Default NFS RWX migration (`MigrationPolicy`, `VMIM`, rollback/checks) | 🛠️ `IMPLEMENTED` / 🧪 Policy Schema & Runner `VALIDATED` / 🔒 Multi-Node `INFRASTRUCTURE-DEPENDENT` | Sprint 1 (M6) |
-| 8 | **CPU Hot-Plug** | Dynamic vCPU socket scaling (`LiveUpdate`, `maxSockets: 4`) | 🛠️ `IMPLEMENTED` / 🧪 Manifest/Bounds `VALIDATED` / 🔒 Live Patch `INFRASTRUCTURE-DEPENDENT` | Sprint 1 (M6) |
-| 9 | **Memory Hot-Plug** | Dynamic guest RAM scaling (`guest: 2Gi -> maxGuest: 4Gi`) | 🛠️ `IMPLEMENTED` / 🧪 Manifest/Bounds `VALIDATED` / 🔒 Live Patch `INFRASTRUCTURE-DEPENDENT` | Sprint 1 (M6) |
-| 10 | **Storage Hot-Plug** | Dynamic SCSI volume attach/detach (`virtctl addvolume`/`removevolume`) | 🛠️ `IMPLEMENTED` / 🧪 Schema & Script `VALIDATED` / 🔒 Live Attach `INFRASTRUCTURE-DEPENDENT` | Sprint 1 (M6) |
-| 11 | **NIC Hot-Plug** | Attaching dynamic Multus secondary interface | ⏳ NOT STARTED | Deferred (`ADR-011` / Sprint 3) |
-| 12 | **Benchmarking** | `6` `.fio` profiles, `run-fio-benchmarks.sh`, `summarize-results.py`, `unittest` | 🛠️ `IMPLEMENTED` / 🧪 `--parse-only` + `unittest` `VALIDATED` / 🔒 Bare-metal `INFRASTRUCTURE-DEPENDENT` | Sprint 2 (M8) |
-| 13 | **Failure Recovery** | 4 reversible scenarios, SHA-256 verifier, event observer, drill runner | 🛠️ `IMPLEMENTED` / 🧪 Dry-Run + SHA-256 + Refusal `VALIDATED` / 🔒 Faults `INFRASTRUCTURE-DEPENDENT` | Sprint 2 (M7) |
-| 14 | **Observability** | `kube-prometheus-stack v93.2.0`, `ServiceMonitor`s, `PrometheusRule`, `3` Grafana JSONs | 🛠️ `IMPLEMENTED` / 🧪 `promtool v3.16.0` + CRD + JSON `VALIDATED` / 🔒 Live `INFRASTRUCTURE-DEPENDENT` | Sprint 2 (M9) |
-| 15 | **Integration Demo** | 9-stage orchestrator `run-project-demo.sh` & `validate-project-integration.sh` | 🛠️ `IMPLEMENTED` / 🧪 `local-validation` + `11/11` Suite `VALIDATED` / 🔒 Live `INFRASTRUCTURE-DEPENDENT` | Sprint 2 (M10 Core) |
-
----
-
-## 6. Repository Layout
+## 4. Repository Structure
 
 ```text
 k8s-high-performance-storage/
-├── AGENTS.md               # Strict governance instructions for AI-assisted development
-├── README.md               # Project landing page, overview, and roadmap
-├── PROJECT_STATE.md        # Persistent single source of truth for progress tracking
-├── ARCHITECTURE.md         # Detailed target architecture and technical design specifications
-├── RESEARCH.md             # Theoretical foundations, API references, and open inquiries
-├── LEARNING_NOTES.md       # Student engineering reference guide and interview preparation
-├── DECISIONS.md            # Architectural Decision Records (ADRs) tracking design choices
-├── .gitignore              # Exclusion rules preventing leakage of credentials, logs, and caches
-├── LICENSE                 # Project open-source license (MIT)
-│
-├── infrastructure/         # Cluster manifests, node configs, networking, and storage primitives
-│   ├── kubernetes/         # kubeadm configs, cluster initialization manifests
-│   ├── networking/         # CNI configurations (Calico/Flannel)
-│   └── storage/            # DiskPool CRDs, StorageClasses, and PVC templates
-│
-├── kubevirt/               # KubeVirt operator configs, VM specs, and migration policies
-│   ├── installation/       # Operator and Subresource deployment manifests
-│   ├── virtualmachines/    # VirtualMachine and VirtualMachineInstance specifications
-│   ├── migration/          # VirtualMachineInstanceMigration CRDs and policies
-│   └── hotplug/            # Configurations for CPU, memory, volume, and NIC hot-plugging
-│
-├── storage/                # Engine-specific configurations and experimental topologies
-│   ├── mayastor/           # Mayastor Helm values, daemonsets, and engine settings
-│   ├── nfs/                # NFS server and provisioner configs for RWX migration tests
-│   └── experiments/        # Manifests for specialized storage testing scenarios
-│
-├── monitoring/             # Observability manifests and dashboards
-│   ├── prometheus/         # Scrape configs, ServiceMonitors, and alert rules
-│   └── grafana/            # Pre-configured JSON dashboards for Mayastor and KubeVirt
-│
-├── benchmarks/             # Storage benchmarking harness
-│   ├── fio/                # FIO job profiles (sequential, random, variable block sizes)
-│   ├── scripts/            # Automated benchmark runner scripts
-│   └── results/            # Measured raw performance outputs, metrics, and JSON data
-│
-├── scripts/                # Reusable operational shell scripts
-│   ├── setup/              # Cluster pre-flight, kernel module loading, HugePage config
-│   ├── validation/         # Smoke tests and environment verification scripts
-│   ├── tests/              # Automated functional testing scripts
-│   └── cleanup/            # Teardown and resource reset scripts
-│
-├── tests/                  # Automated and manual verification suites
-│   ├── storage/            # Mayastor PVC creation, IO stress, and integrity tests
-│   ├── migration/          # KubeVirt live migration test sequences
-│   └── recovery/           # Disk unplugging, engine crash, and pool rebuild tests
-│
-├── docs/                   # Extended project documentation
-│   ├── architecture/       # Deep-dive design notes and network flow diagrams
-│   ├── installation/       # Step-by-step reproduction runbooks
-│   ├── experiments/        # Documented test methodology and hypothesis logs
-│   └── submission/         # Zoho SETU program deliverables and project presentation
-│
-└── reports/                # Project reporting assets
-    ├── screenshots/        # Verified terminal output captures and UI views
-    ├── graphs/             # Performance comparison charts (IOPS, Latency vs Block Size)
-    └── final-report/       # Compiled final engineering project report
+├── AGENTS.md, PROJECT_STATE.md, ARCHITECTURE.md, DECISIONS.md, RESEARCH.md, LEARNING_NOTES.md
+├── infrastructure/   # kubeadm, containerd, Calico BGP, OpenEBS 4.6.2 values, DiskPool v1beta3 & StorageClasses
+├── kubevirt/         # KubeVirt v1.9.1 & CDI v1.66.1 CRs, CRD schemas, cloud-init, VMs, MigrationPolicy, hot-plug specs
+├── storage/nfs/      # NFSv4.1 RWX fallback server & csi-driver-nfs StorageClass
+├── monitoring/       # kube-prometheus-stack v93.2.0 values, ServiceMonitors, PrometheusRules & 3 Grafana dashboards
+├── benchmarks/       # Versioned 4k/64k/1M FIO profiles & multi-tier matrix config
+├── scripts/          # Setup (install-dev-tools, 01..08, dev-cluster-local), validate/*, benchmark/*, demo/*, tests/storage/*
+├── tests/            # Resilience scenarios YAML & Python unittest suite for FIO parser
+├── docs/             # Detailed subsystem runbooks, feasibility audits & docs/diagrams/*.md
+└── reports/          # Archived empirical validation reports + reports/final/ submission deliverables
 ```
 
 ---
 
-## 7. Development Environment & Hybrid Workflow
+## 5. Prerequisites & Quick Local Validation
 
-Development follows a strict **hybrid infrastructure model**:
+**Development Platform Audited:** WSL2 Ubuntu `24.04.4 LTS` (`3515 MiB` RAM, single-node `K3s v1.36.6+k3s1`, `/dev/kvm`, `fio 3.36`, `promtool v3.16.0`).  
+**Target Cluster Prerequisites:** `>= 4` Ubuntu `24.04` `x86_64` nodes (`1` Control Plane + `>= 3` workers with `>= 6` CPU cores, `32 GB` RAM preferred for migration headroom, `2 GiB` 2MiB HugePages, blank raw `/dev/disk/by-id/*` NVMe/SSD drives).
 
-1. **Local Workstation (Windows 11 + WSL2 Ubuntu):**
-   - **Hardware:** AMD Ryzen 5 7535HS (6 cores / 12 threads), 8 GB RAM, 512 GB NVMe SSD.
-   - **Role:** Manifest authoring, shell script development, static analysis, documentation maintenance, and repository governance.
-   - **Constraint:** Due to memory (8 GB) and nested virtualization limitations, the full multi-node cluster (requiring 3+ worker nodes with dedicated storage devices and HugePages) will **not** be hosted locally.
+```bash
+# Install pinned validation/dev toolchain inside Ubuntu 24.04 (optional if already present)
+sudo ./scripts/setup/install-dev-tools.sh
 
-2. **Target Infrastructure (College Lab Servers / Remote Linux Environment):**
-   - **Role:** Physical deployment of the 4-node Kubernetes cluster, allocation of raw block devices for Mayastor pools, KVM hardware acceleration for KubeVirt, and physical failure drills.
-   - **Status:** Hardware confirmation and laboratory access are pending evaluation.
-
-3. **Source of Truth:**
-   - GitHub (`k8s-high-performance-storage`) maintains all versioned configuration, scripts, and documentation. No ad-hoc manual modifications occur on target nodes without matching version-controlled manifests.
-
----
-
-## 8. Documentation Navigation
-
-- [Architecture Specification (ARCHITECTURE.md)](ARCHITECTURE.md): Comprehensive system layers, SPDK/NVMe-oF pipelines, and KubeVirt live migration workflows.
-- [Project Governance & Rules (AGENTS.md)](AGENTS.md): Operational guardrails, chunk development rules, and quality standards.
-- [Project Progress State (PROJECT_STATE.md)](PROJECT_STATE.md): Real-time tracker for chunk completions, blockers, and verification evidence.
-- [Technical Research Tracker (RESEARCH.md)](RESEARCH.md): Up-to-date theoretical investigations, kernel parameters, and official documentation links.
-- [Student Learning Notes (LEARNING_NOTES.md)](LEARNING_NOTES.md): Step-by-step conceptual explanations, interview Q&A, and systems engineering concepts.
-- [Architectural Decision Records (DECISIONS.md)](DECISIONS.md): Justifications and trade-off analyses for structural design choices.
-
-### Infrastructure Discovery & Feasibility Reports (Chunk 1 Deliverables)
-- [Local Infrastructure Inventory (docs/infrastructure-inventory.md)](docs/infrastructure-inventory.md): Hardware detection, memory limitations, and WSL2 assessment on the dev laptop.
-- [College Infrastructure Questionnaire (docs/college-infrastructure-questionnaire.md)](docs/college-infrastructure-questionnaire.md): Formal inquiry and hardware sizing for lab administrators.
-- [Software Version Compatibility Matrix (docs/compatibility-matrix.md)](docs/compatibility-matrix.md): Lifecycle research establishing Candidate B (`Ubuntu 24.04 LTS`, `K8s 1.36.x`, `containerd 2.3.x LTS`, `OpenEBS 4.6.2` / `Mayastor 2.12.2`, `KubeVirt 1.9.x`, `Calico 3.33`).
-- [Storage Architecture Analysis (docs/storage-architecture-analysis.md)](docs/storage-architecture-analysis.md): RWO vs. RWX evaluation, Mayastor SPDK volume pipeline, and dual-tier storage strategy.
-- [Network & Virtualization Requirements (docs/network-and-virtualization-requirements.md)](docs/network-and-virtualization-requirements.md): Canonical 20-port audit, network topology, and hardware KVM pass-through requirements.
-- [Deployment Options Evaluation (docs/deployment-options.md)](docs/deployment-options.md): Comparative evaluation of physical servers, lab PCs, hypervisor nested VMs, and cloud options.
-- [Final Deployment Proposal (docs/final-deployment-proposal.md)](docs/final-deployment-proposal.md): Complete research-backed engineering blueprint for cluster deployment.
-
-### Milestone M2–M3 & KubeVirt Sprint 1 Implementation Guides
-- [Kubernetes Deployment Guide (docs/kubernetes-deployment-guide.md)](docs/kubernetes-deployment-guide.md): 4-node `kubeadm` + Calico BGP bootstrap and WSL2 single-node K3s verification workflow.
-- [Mayastor Storage Architecture (docs/mayastor-architecture.md)](docs/mayastor-architecture.md): OpenEBS `4.6.2` / Mayastor `v2.12.2` chart layout, CSI `StorageClass` specs, `DiskPool` (`v1beta3`) design, and compatibility boundaries.
-- [Mayastor Networking Design (docs/mayastor-networking.md)](docs/mayastor-networking.md): NVMe-oF TCP ports (`10124`, `8420`, `4421`), Calico data-path flow, and MTU/rebuild window tuning.
-- [Mayastor Testing Plan (docs/mayastor-testing-plan.md)](docs/mayastor-testing-plan.md): Two-tier verification protocol (static/WSL2 checks vs. live 4-node NVMe integrity testing).
-- [KubeVirt Architecture & Deployment (docs/kubevirt-architecture.md)](docs/kubevirt-architecture.md): KubeVirt `v1.9.1` & CDI `v1.66.1` operator architecture, KVM preflight gates, and schema validation.
-- [VM Persistent Storage Integration (docs/vm-storage-integration.md)](docs/vm-storage-integration.md): RWO Filesystem, RWO Raw Block, Default NFS RWX (`csi-driver-nfs v4.9.0`), Opt-In Experimental RWX Block, and cloud-init verification.
-- [Live Migration Runbook (docs/live-migration.md)](docs/live-migration.md): `MigrationPolicy`, network/RAM budgets, `validate-live-migration.sh`, timeout rollback, and post-migration verification.
-- [Runtime Hot-Plugging Guide (docs/vm-hotplug.md)](docs/vm-hotplug.md): CPU sockets, memory `maxGuest`, SCSI disk attach/detach (`virtctl addvolume`), guest OS & restart limits.
-
-### Sprint 2 Resilience, Benchmarking, Observability & Integration Runbooks
-- [Storage Resilience & Recovery Guide (docs/storage-resilience.md)](docs/storage-resilience.md): Partial write-log rebuilds, 3-node anti-affinity, `validate-storage-resilience.sh`, and guarded drills (`run-resilience-drills.sh`).
-- [FIO Benchmarking Guide (docs/performance-benchmarking.md)](docs/performance-benchmarking.md): 6 versioned FIO profiles (`4k`, `64k`, `1M`), safety guards, and environment-isolated result summarization (`summarize-results.py`).
-- [Observability Architecture (docs/observability.md)](docs/observability.md): Pinned `kube-prometheus-stack v93.2.0`, source-verified Mayastor/KubeVirt metrics & explicit gaps, `promtool`-checked alerts, and 3 Grafana dashboards.
-- [End-to-End Demo Runbook (docs/demo-runbook.md)](docs/demo-runbook.md): 9-stage `run-project-demo.sh` (`local-validation` vs `target-live`) and `validate-project-integration.sh`.
-
----
-
-## 9. Implementation Roadmap
-
-```mermaid
-flowchart LR
-    P1["Phase 1<br/>Chunks 0-2.1"] --> M1["M1: Dev Tooling<br/>& Preflight"]
-    M1 --> M2["M2: K8s Cluster<br/>& Calico"]
-    M2 --> M3["M3: OpenEBS<br/>Mayastor Engine"]
-    M3 --> S1["Sprint 1 (M4-M6 Core):<br/>KubeVirt, VM Storage,<br/>Migration & Hot-Plug"]
-    S1 --> S2["Sprint 2 (M7-M9 + Demo):<br/>Resilience, FIO,<br/>Observability & E2E"]
-    S2 --> S3["Sprint 3 (M10):<br/>Final Report, Charts<br/>& Viva Defense Kit"]
-
-    classDef done fill:#2da44e,stroke:#1b7c3a,color:#fff;
-    classDef pending fill:#8c959f,stroke:#6e7781,color:#fff;
-
-    class P1,M1,M2,M3,S1,S2 done;
-    class S3 pending;
+# Run full 11-step static/tooling suite, docs check & safe 9-stage demo orchestrator
+./scripts/validate/validate-project-integration.sh
 ```
 
-*Current Phase: Final Completion Sprint 2 Completed (Storage Resilience, FIO Benchmarking, Prometheus/Grafana Observability, and 9-Stage E2E Integration Demo Implemented & Statically/Safety Validated; Live Multi-Node Execution INFRASTRUCTURE-DEPENDENT). Next Authorized Step: Final Completion Sprint — Prompt 3 of 3.*
+### Subsystem Setup, Benchmark, Monitoring, Resilience & Demo Commands
+- **Dry-Run Deployment Gates (Safe Locally):**
+  `./scripts/setup/05-deploy-mayastor.sh --dry-run` · `./scripts/setup/06-deploy-kubevirt.sh --dry-run` · `./scripts/setup/07-deploy-vm-examples.sh --tier all-safe --ssh-key-file ~/.ssh/id_ed25519.pub --dry-run` · `./scripts/setup/08-deploy-monitoring.sh --dry-run`
+- **Target Cluster Deployment Sequence:** See [`reports/final/Zoho_SETU_High_Performance_Kubernetes_Storage_Report.md`](reports/final/Zoho_SETU_High_Performance_Kubernetes_Storage_Report.md#o-reproduction-guide) (`02`–`08`).
+- **FIO Benchmarks ([Guide](docs/performance-benchmarking.md)):** `./scripts/benchmark/run-fio-benchmarks.sh --mode dry-run` | `--mode synthetic-fixture` | `--mode execute --target-tier mayastor-rwo-block --target-path /dev/vdb --confirm-target YES-I-CONFIRMED-TARGET`
+- **Observability ([Guide](docs/observability.md)):** `./scripts/validate/validate-observability.sh` (`promtool`, CRDs, 3 dashboards) · `kubectl -n monitoring port-forward svc/kube-prometheus-stack-grafana 3000:3000`
+- **Storage Resilience ([Guide](docs/storage-resilience.md)):** `./scripts/validate/validate-storage-resilience.sh` · `./scripts/tests/storage/run-resilience-drills.sh --scenario io-engine-restart --mode simulate`
+- **Integrated Demo ([Runbook](docs/demo-runbook.md)):** `./scripts/demo/run-project-demo.sh --mode local-validation` *(safe anywhere)* or `--mode target-live --confirm-demo YES-EXECUTE-LIVE-DEMO` *(target cluster)*
+
+---
+
+## 6. Honest Validation Summary & Limitations
+
+- **Locally `VALIDATED`:**
+  - `validate-project-integration.sh` passes **`11/11`** `run-validation.sh` steps (`26` scripts ShellCheck/shfmt clean, `39` YAML `0` warnings/errors, **`44/44`** `kubeconform -strict` + `kubeadm config validate`, `38` JSONs `jq`, `6/6` FIO `--parse-only`, `promtool v3.16.0` config & 10 rules, Python `unittest 3/3`), verifies all docs, and executes the 9-stage demo (`PASS=1, SKIP_INFRA=8, FAIL=0`).
+  - Local `K3s v1.36.6+k3s1` (`12 PASS, 1 WARN, 0 FAIL, 1 N/T`), host preflight (`27/8/0/1`), SHA-256 integrity cycle, and `12/12` WSL2/destructive safety refusal gates (`exit 1`) are empirically verified.
+- **`INFRASTRUCTURE-DEPENDENT` Limitations (NOT Executed Locally):**
+  - This project has **NOT** been deployed on a physical 4-node production cluster and contains **NO fabricated or locally measured physical NVMe FIO benchmarks**.
+  - Live SPDK/NVMe-oF `DiskPool` I/O, Mayastor replica rebuilds under node fault, 4 GiB KVM VM workloads, cross-node live migration, live CPU/RAM/SCSI hot-plugging, and cluster-wide Prometheus scraping require multi-node target hardware. Multus secondary NIC hot-plugging is deferred.
+
+---
+
+## 7. Documentation Index & License
+
+- **Core Submission & Governance:** [Final Technical Report](reports/final/Zoho_SETU_High_Performance_Kubernetes_Storage_Report.md) · [Presentation (15 Slides)](reports/final/Zoho_SETU_Project_Presentation.pptx) · [Final Status](reports/final/FINAL_PROJECT_STATUS.md) · [Submission Checklist](reports/final/SUBMISSION_CHECKLIST.md) · [PROJECT_STATE.md](PROJECT_STATE.md) · [ARCHITECTURE.md](ARCHITECTURE.md) · [DECISIONS.md](DECISIONS.md) · [LEARNING_NOTES.md](LEARNING_NOTES.md)
+- **Subsystem Runbooks (`docs/`):** [Kubernetes Deployment](docs/kubernetes-deployment-guide.md) · [Calico BGP](docs/calico-networking.md) · [Mayastor Architecture](docs/mayastor-architecture.md) · [KubeVirt Architecture](docs/kubevirt-architecture.md) · [VM Storage Integration](docs/vm-storage-integration.md) · [Live Migration](docs/live-migration.md) · [Runtime Hot-Plugging](docs/vm-hotplug.md) · [Storage Resilience](docs/storage-resilience.md) · [Performance Benchmarking](docs/performance-benchmarking.md) · [Observability](docs/observability.md) · [Demo Runbook](docs/demo-runbook.md)
+- **License:** Released under the [MIT License](LICENSE).
