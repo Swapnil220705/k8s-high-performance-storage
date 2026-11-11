@@ -2,8 +2,8 @@
 
 **Project Name:** Deploy High-Performance Storage for Kubernetes  
 **Project ID:** SWFW_5S_08  
-**Document Status:** PROPOSED TARGET ARCHITECTURE (M2 Kubernetes & Calico Manifests Validated; Local K3s Dev Cluster Active; 4-Node Multi-Node Execution Infrastructure-Dependent)  
-**Last Updated:** 2026-11-11 (Milestone M2 Kubernetes Cluster Architecture & Local Dev Validation)  
+**Document Status:** PROPOSED TARGET ARCHITECTURE (M2 K8s/Calico, M3 Mayastor, and Sprint 1 KubeVirt/Migration/Hot-Plug Configs Implemented & Statically Validated; 4-Node Multi-Node Execution Infrastructure-Dependent)  
+**Last Updated:** 2026-11-11 (Final Completion Sprint 1 — KubeVirt v1.9.1, CDI v1.66.1, VM Storage, Live Migration & Hot-Plugging)  
 
 ---
 
@@ -123,7 +123,7 @@ The intended deployment separates cluster traffic into logical planes across the
     - **Comparison Baseline (Candidate A):** Kubernetes **v1.35.x** + containerd **2.2.x** (reached EOL on Nov 6, 2026; unviable for new deployments) + Mayastor v2.12.2 (E2E CI tested on 1.35.6).
     - **Exclusion:** Kubernetes 1.37.x is excluded due to lack of KubeVirt/Mayastor qualification.
   - **Storage Engine:** OpenEBS v4.6.x (Mayastor subchart v2.12.2) with native experimental RWX block volume support.
-  - **Virtualization Engine:** KubeVirt v1.9.x (or v1.8.x) + CDI v1.61.x.
+  - **Virtualization Engine:** KubeVirt v1.9.1 + CDI v1.66.1 (`ADR-013`).
 - **Node Topology:**
   - **1 Dedicated Control Plane Node (Node 0):** Hosts API server, `etcd` (Raft consensus), controller manager, scheduler, and Mayastor control plane agents.
   - **3 Dedicated Worker Nodes (Nodes 1, 2, 3):** Labeled and configured for storage and virtualization workloads (`openebs.io/engine=mayastor`, `kubevirt.io/schedulable=true`), each with 2 GiB HugePages pre-allocated and dedicated NVMe/SSD raw block devices.
@@ -305,3 +305,15 @@ Milestone M3 materializes Section 5 (Distributed Storage Engine) into version-pi
 - **Storage Pools & Schema Validation:** `infrastructure/storage/mayastor/{node-scheduling-configmap.yaml,diskpools.yaml}` (`openebs.io/v1beta3` `DiskPool`) validated locally via `infrastructure/storage/mayastor/schemas/openebs.io/diskpool_v1beta3.json`.
 - **CSI StorageClasses & Integrity Verification (`io.openebs.csi-mayastor`):** `infrastructure/storage/examples/{storageclasses.yaml,pvc-replicated-r3.yaml,pod-verify-integrity.yaml}` (`mayastor-nvme-r3-ext4`, `mayastor-nvme-r3-block`, experimental `mayastor-nvme-r3-block-rwx` with `rwxBlock: "true"`, and baseline `mayastor-nvme-r1-dev`).
 - **Operational & Validation Automation:** `scripts/validate/validate-mayastor-prerequisites.sh`, `scripts/setup/05-deploy-mayastor.sh` (`--dry-run` + WSL2/prerequisite hard refusal), and `scripts/validate/validate-mayastor-deployment.sh`. Detailed architecture, networking, and testing runbooks reside in `docs/mayastor-architecture.md`, `docs/mayastor-networking.md`, and `docs/mayastor-testing-plan.md`. Note: OpenEBS `v2.12.2` upstream E2E qualification stops at Kubernetes `v1.35.6`, while live execution on Candidate B (`v1.36.x`) remains `INFRASTRUCTURE-DEPENDENT`.
+
+---
+
+## 10. Sprint 1 KubeVirt, VM Storage, Live Migration & Hot-Plug Implementation Reference
+
+- **Operator & CR Pinned Stack (`kubevirt/installation/`):** `KubeVirt v1.9.1` (`kubevirt-cr.yaml` with `vmRolloutStrategy: LiveUpdate`, `maxHotplugRatio: 4`, `useEmulation: false`, TLS migration security enabled), `CDI v1.66.1` (`cdi-cr.yaml` with `HonorWaitForFirstConsumer` and `scratchSpaceStorageClass: mayastor-nvme-r3-ext4`), isolated namespaces (`namespaces.yaml`), and 7 extracted CRD schemas (`kubevirt/installation/schemas/`).
+- **VM Persistent Storage Tiers (`kubevirt/virtualmachines/`, `storage/nfs/`):**
+  - Standard RWO Filesystem (`vm-ubuntu-rwo-fs`, `mayastor-nvme-r3-ext4`) and Raw Block RWO (`vm-ubuntu-rwo-block`, `mayastor-nvme-r3-block`).
+  - Default Safe RWX Live-Migration Tier: NFSv4.1 gateway (`mayastor-nfs-server` backed by Mayastor RWO + `csi-driver-nfs v4.9.0` -> `nfs-mayastor-rwx`) powering `vm-ubuntu-migration-nfs`.
+  - Opt-In Experimental RWX Block Research (`vm-ubuntu-rwx-block-exp`, `mayastor-nvme-r3-block-rwx`, `runStrategy: Manual`).
+- **Live Migration & Hot-Plug (`kubevirt/migration/`, `kubevirt/hotplug/`):** `MigrationPolicy` (`default-nfs-rwx-migration-policy`, `experimental-rwx-block-migration-policy`), `VirtualMachineInstanceMigration`, `vm-ubuntu-hotplug` (CPU sockets `2->4`, RAM `2Gi->4Gi`, SCSI `hotplug-extra-disk-01`/`02`), and automation scripts `06-deploy-kubevirt.sh`, `07-deploy-vm-examples.sh`, `validate-kubevirt.sh`, `validate-vm-storage.sh`, `validate-live-migration.sh`, `validate-vm-hotplug.sh`.
+- **Runbooks:** [`docs/kubevirt-architecture.md`](docs/kubevirt-architecture.md), [`docs/vm-storage-integration.md`](docs/vm-storage-integration.md), [`docs/live-migration.md`](docs/live-migration.md), and [`docs/vm-hotplug.md`](docs/vm-hotplug.md).

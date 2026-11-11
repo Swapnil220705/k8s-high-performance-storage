@@ -4,7 +4,7 @@
 **Program:** Zoho SETU — College Student Project Program  
 **Category:** Cloud Infrastructure / Kubernetes / Virtualization / Distributed Storage / Systems Engineering  
 **Repository Branch:** `main`  
-**Status:** In Progress (Phase 2 — Target Infrastructure Preparation; Milestone M3 OpenEBS Mayastor Storage Engine & Volume Provisioning Complete)  
+**Status:** In Progress (Phase 2–3 Complete: M2 Kubernetes, M3 Mayastor & Sprint 1 KubeVirt/Migration/Hot-Plug Implemented & Statically Validated; Live Multi-Node Deployment & Benchmarks Pending)  
 
 ---
 
@@ -51,7 +51,7 @@ Enterprise workloads demanding virtualization within Kubernetes require storage 
 | **Storage Engine** | OpenEBS Mayastor | `openebs/openebs` v4.6.2 (Mayastor v2.12.2) | SPDK-based high-performance distributed block storage engine (Ports 8420 & 4421; canonical 20-port matrix) |
 | **I/O Acceleration** | SPDK (User Space) | Integrated with Mayastor | Polled-mode NVMe driver (2 dedicated cores), zero-copy user-space I/O pipeline |
 | **Storage Protocol** | NVMe-oF (TCP) | NVMe over Fabrics | High-throughput, low-latency block transport across cluster nodes |
-| **Virtualization Layer** | KubeVirt | v1.9.x (or v1.8.x) | Kubernetes CRD controller managing QEMU/KVM VM pods |
+| **Virtualization Layer** | KubeVirt + CDI | `KubeVirt v1.9.1` + `CDI v1.66.1` (`virtctl v1.9.0`) | Kubernetes CRD controller & DataVolume importer managing QEMU/KVM VM pods (`ADR-013`) |
 | **Hypervisor / Emulator** | QEMU / KVM | Linux KVM module (`/dev/kvm`) | Hardware-assisted virtualization within VM launcher pods |
 | **Shared Storage Gateway** | NFS Server / RWX Provisioner | `csi-driver-nfs` v4.9.0 | Comparative fallback mechanism for RWX live-migration shared storage |
 | **Benchmarking Suite** | Flexible I/O Tester (`fio`) | v3.30+ | Multi-pattern synthetic I/O workload generation & measurement |
@@ -120,13 +120,13 @@ All capabilities below represent project targets and will be updated as implemen
 | 2 | **Storage Engine** | OpenEBS `4.6.2` / Mayastor `2.12.2` deployment & HugePages validation | 🛠️ `IMPLEMENTED` / 🧪 Chart/Schema/Refusal `VALIDATED` / 🔒 Live SPDK `INFRASTRUCTURE-DEPENDENT` | M3 |
 | 3 | **Storage Pools** | Multi-node `DiskPool` (`openebs.io/v1beta3`) across raw NVMe | 🛠️ `IMPLEMENTED` / 🧪 CRD Schema `VALIDATED` / 🔒 Hardware `INFRASTRUCTURE-DEPENDENT` | M3 |
 | 4 | **Replication** | Synchronous 3-way NVMe-oF TCP StorageClasses & integrity verification | 🛠️ `IMPLEMENTED` / 🧪 Static CSI `VALIDATED` / 🔒 Multi-Node `INFRASTRUCTURE-DEPENDENT` | M3 |
-| 5 | **Virtualization** | KubeVirt Operator and CRD deployment | ⏳ NOT STARTED | M4 |
-| 6 | **VM Workloads** | Cloud-init guest VM launch backed by Mayastor PV | ⏳ NOT STARTED | M4–M5 |
-| 7 | **Live Migration** | VM migration across workers without service drop | ⏳ NOT STARTED | M6 |
-| 8 | **CPU Hot-Plug** | Dynamic vCPU scaling on running KubeVirt VM | ⏳ NOT STARTED | M6 |
-| 9 | **Memory Hot-Plug** | Dynamic memory allocation adjustment on guest VM | ⏳ NOT STARTED | M6 |
-| 10 | **Storage Hot-Plug** | Attaching secondary block volume to active VM | ⏳ NOT STARTED | M6 |
-| 11 | **NIC Hot-Plug** | Attaching dynamic Multus secondary interface | ⏳ NOT STARTED | M6 |
+| 5 | **Virtualization** | KubeVirt `v1.9.1` + CDI `v1.66.1` operator & CRs | 🛠️ `IMPLEMENTED` / 🧪 CRD Schema & KVM Preflight `VALIDATED` / 🔒 Cluster `INFRASTRUCTURE-DEPENDENT` | Sprint 1 (M4) |
+| 6 | **VM Workloads** | Cloud-init Ubuntu VMs (RWO FS, RWO Block, NFS RWX, Exp RWX Block) | 🛠️ `IMPLEMENTED` / 🧪 Strict Schema & Dry-Run `VALIDATED` / 🔒 Live Boot `INFRASTRUCTURE-DEPENDENT` | Sprint 1 (M4–M5) |
+| 7 | **Live Migration** | Default NFS RWX migration (`MigrationPolicy`, `VMIM`, rollback/checks) | 🛠️ `IMPLEMENTED` / 🧪 Policy Schema & Runner `VALIDATED` / 🔒 Multi-Node `INFRASTRUCTURE-DEPENDENT` | Sprint 1 (M6) |
+| 8 | **CPU Hot-Plug** | Dynamic vCPU socket scaling (`LiveUpdate`, `maxSockets: 4`) | 🛠️ `IMPLEMENTED` / 🧪 Manifest/Bounds `VALIDATED` / 🔒 Live Patch `INFRASTRUCTURE-DEPENDENT` | Sprint 1 (M6) |
+| 9 | **Memory Hot-Plug** | Dynamic guest RAM scaling (`guest: 2Gi -> maxGuest: 4Gi`) | 🛠️ `IMPLEMENTED` / 🧪 Manifest/Bounds `VALIDATED` / 🔒 Live Patch `INFRASTRUCTURE-DEPENDENT` | Sprint 1 (M6) |
+| 10 | **Storage Hot-Plug** | Dynamic SCSI volume attach/detach (`virtctl addvolume`/`removevolume`) | 🛠️ `IMPLEMENTED` / 🧪 Schema & Script `VALIDATED` / 🔒 Live Attach `INFRASTRUCTURE-DEPENDENT` | Sprint 1 (M6) |
+| 11 | **NIC Hot-Plug** | Attaching dynamic Multus secondary interface | ⏳ NOT STARTED | Remaining Sprint |
 | 12 | **Benchmarking** | Matrix testing using `fio` across R/W profiles | ⏳ NOT STARTED | M7–M8 |
 | 13 | **Failure Recovery** | Degraded pool rebuild and node offline failover | ⏳ NOT STARTED | M7 |
 | 14 | **Observability** | Real-time dashboards for IOPS, latency, and health | ⏳ NOT STARTED | M8 |
@@ -233,11 +233,15 @@ Development follows a strict **hybrid infrastructure model**:
 - [Deployment Options Evaluation (docs/deployment-options.md)](docs/deployment-options.md): Comparative evaluation of physical servers, lab PCs, hypervisor nested VMs, and cloud options.
 - [Final Deployment Proposal (docs/final-deployment-proposal.md)](docs/final-deployment-proposal.md): Complete research-backed engineering blueprint for cluster deployment.
 
-### Milestone M2–M3 Implementation Guides
+### Milestone M2–M3 & KubeVirt Sprint 1 Implementation Guides
 - [Kubernetes Deployment Guide (docs/kubernetes-deployment-guide.md)](docs/kubernetes-deployment-guide.md): 4-node `kubeadm` + Calico BGP bootstrap and WSL2 single-node K3s verification workflow.
 - [Mayastor Storage Architecture (docs/mayastor-architecture.md)](docs/mayastor-architecture.md): OpenEBS `4.6.2` / Mayastor `v2.12.2` chart layout, CSI `StorageClass` specs, `DiskPool` (`v1beta3`) design, and compatibility boundaries.
 - [Mayastor Networking Design (docs/mayastor-networking.md)](docs/mayastor-networking.md): NVMe-oF TCP ports (`10124`, `8420`, `4421`), Calico data-path flow, and MTU/rebuild window tuning.
 - [Mayastor Testing Plan (docs/mayastor-testing-plan.md)](docs/mayastor-testing-plan.md): Two-tier verification protocol (static/WSL2 checks vs. live 4-node NVMe integrity testing).
+- [KubeVirt Architecture & Deployment (docs/kubevirt-architecture.md)](docs/kubevirt-architecture.md): KubeVirt `v1.9.1` & CDI `v1.66.1` operator architecture, KVM preflight gates, and schema validation.
+- [VM Persistent Storage Integration (docs/vm-storage-integration.md)](docs/vm-storage-integration.md): RWO Filesystem, RWO Raw Block, Default NFS RWX (`csi-driver-nfs v4.9.0`), Opt-In Experimental RWX Block, and cloud-init verification.
+- [Live Migration Runbook (docs/live-migration.md)](docs/live-migration.md): `MigrationPolicy`, network/RAM budgets, `validate-live-migration.sh`, timeout rollback, and post-migration verification.
+- [Runtime Hot-Plugging Guide (docs/vm-hotplug.md)](docs/vm-hotplug.md): CPU sockets, memory `maxGuest`, SCSI disk attach/detach (`virtctl addvolume`), guest OS & restart limits.
 
 ---
 
@@ -248,18 +252,14 @@ flowchart LR
     P1["Phase 1<br/>Chunks 0-2.1"] --> M1["M1: Dev Tooling<br/>& Preflight"]
     M1 --> M2["M2: K8s Cluster<br/>& Calico"]
     M2 --> M3["M3: OpenEBS<br/>Mayastor Engine"]
-    M3 --> M4["M4: KubeVirt<br/>& Guest VMs"]
-    M4 --> M5["M5: Storage Tiers<br/>& NFS Gateway"]
-    M5 --> M6["M6: Live Migration<br/>& Hot-Plugging"]
-    M6 --> M7["M7: Fault & Rebuild<br/>Drills"]
-    M7 --> M8["M8: FIO &<br/>Observability"]
-    M8 --> M9["M9-M10: Report<br/>& Defense"]
+    M3 --> M4["Sprint 1 (M4-M6 Core):<br/>KubeVirt, VM Storage,<br/>Migration & Hot-Plug"]
+    M4 --> M7["Sprint 2-3:<br/>NIC Hot-Plug, Faults,<br/>FIO, Telemetry & Report"]
 
     classDef done fill:#2da44e,stroke:#1b7c3a,color:#fff;
     classDef pending fill:#8c959f,stroke:#6e7781,color:#fff;
 
-    class P1,M1,M2,M3 done;
-    class M4,M5,M6,M7,M8,M9 pending;
+    class P1,M1,M2,M3,M4 done;
+    class M7 pending;
 ```
 
-*Current Phase: Milestone M3 Completed (Implemented & Statically/Safety Validated; Live Multi-Node NVMe Execution Pending Target Hardware). Next Authorized Milestone: M4 — KubeVirt Installation & Virtual Machine Provisioning (awaiting user authorization).*
+*Current Phase: Final Completion Sprint 1 Completed (KubeVirt `v1.9.1`, CDI `v1.66.1`, VM Storage Tiers, Live Migration, and CPU/Memory/Disk Hot-Plug Implemented & Statically Validated; Live Multi-Node Deployment Pending Target Hardware). Next Authorized Step: Final Completion Sprint — Prompt 2 of 3.*
