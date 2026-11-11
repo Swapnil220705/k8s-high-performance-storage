@@ -146,6 +146,6 @@ flowchart TD
 ## 5. Unresolved Infrastructure Dependencies
 
 The following dependencies remain pending confirmation before Chunk 2 (Cluster Bootstrap) can proceed:
-- **Lab Server Allocation:** Approval and reservation of 4 machines meeting audited specifications (6-core min, 16 GB RAM min, 32 GB preferred, dedicated raw SSD/NVMe) via [`docs/college-infrastructure-questionnaire.md`](docs/college-infrastructure-questionnaire.md).
+- **Lab Server Allocation:** Approval and reservation of 4 machines meeting audited specifications (6-core min, 16 GB RAM min, 32 GB preferred, dedicated raw SSD/NVMe) via [`docs/college-infrastructure-questionnaire.md`](college-infrastructure-questionnaire.md).
 - **Network Permissions:** Confirmation of static IP addresses, subnets, and unrestricted node-to-node firewall rules across the authoritative **reconciled 20-port matrix** (10 physical host firewall rules, 10 cluster-internal/loopback services), with TCP 4420 purged and monitoring/service ports restricted to cluster-internal CIDR.
 - **Candidate Selection Alignment:** Candidate B (Kubernetes 1.36.x + containerd 2.3.x LTS) is established as the preferred experimental qualification target; Candidate A (Kubernetes 1.35.x + containerd 2.2.x) is retained as the storage-tested comparison baseline. The qualification gap of Mayastor 2.12.2 on Kubernetes 1.36 will be experimentally evaluated.

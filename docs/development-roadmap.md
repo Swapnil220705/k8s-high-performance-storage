@@ -56,8 +56,8 @@ flowchart TD
   4. Author baseline node preparation scripts (`scripts/setup/02-node-prerequisites.sh`) for kernel module loading (`nvme-tcp`, `vfio_pci`) and HugePage sysctl allocation.
 - **Dependencies:** None (operates entirely in local WSL2).
 - **Expected Deliverables:**
-  - Automated preflight inspection script: [`scripts/setup/01-host-preflight.sh`](scripts/setup/01-host-preflight.sh).
-  - Node prerequisites configuration script: [`scripts/setup/02-node-prerequisites.sh`](scripts/setup/02-node-prerequisites.sh).
+  - Automated preflight inspection script: [`scripts/setup/01-host-preflight.sh`](../scripts/setup/01-host-preflight.sh).
+  - Node prerequisites configuration script: [`scripts/setup/02-node-prerequisites.sh`](../scripts/setup/02-node-prerequisites.sh).
   - Linter configuration files (`.yamllint`, script test harnesses).
 - **Verification Criteria:**
   - All shell scripts pass `shellcheck` with zero errors.
@@ -339,4 +339,4 @@ flowchart TD
 | **M7** | **Failure Recovery & Rebuild** | `resilience-scenarios.yaml`, SHA-256 verifier, event observer, drill harness dry-run & WSL2 refusal (`COMPLETED 2026-11-11`) | Live `io-engine-restart`, cordon, & pool recovery drills | `validate-storage-resilience.sh`, `scripts/tests/storage/*`, `docs/storage-resilience.md` | Phase 3 |
 | **M8** | **FIO Benchmarking Matrix** | 6 FIO profiles (`--parse-only`), `matrix-config.yaml`, safety checks, `summarize-results.py` & `unittest` (`COMPLETED 2026-11-11`) | Multi-tier bare-metal NVMe/Mayastor/NFS benchmarking | `benchmarks/fio/*.fio`, `run-fio-benchmarks.sh`, `summarize-results.py` | Phase 3 |
 | **M9** | **Full-Stack Observability** | `kube-prometheus-stack v93.2.0` configs, `promtool v3.16.0` check config/rules, CRD schemas, 3 dashboards (`COMPLETED 2026-11-11`) | Live ClusterIP Prometheus scraping & Grafana dashboards | `monitoring/*`, `08-deploy-monitoring.sh`, `validate-observability.sh` | Phase 3 |
-| **M10**| **Final Integration & Report** | 9-stage `run-project-demo.sh` & `validate-project-integration.sh` completed (`Sprint 2`); graphs, final technical paper & viva kit pending (`Sprint 3`) | Master live verification & empirical graphs | `final-project-report.md`, charts, `run-project-demo.sh` | Phase 4 |
+| **M10**| **Final Integration & Report** | 9-stage demo orchestrator, 5 Mermaid diagrams (`docs/diagrams/`), Final Report (A–O), 15-slide `.pptx`, Submission Checklist & Three-State Status (`COMPLETED 2026-11-11`) | Live end-to-end target demonstration & bare-metal charts | `Zoho_SETU_High_Performance_Kubernetes_Storage_Report.md`, `Zoho_SETU_Project_Presentation.pptx` | Phase 4 |
