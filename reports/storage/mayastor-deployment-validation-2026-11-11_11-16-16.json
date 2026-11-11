@@ -1,0 +1,70 @@
+{
+  "metadata": {
+    "reportDate": "2026-11-11T11:16:16Z",
+    "namespace": "openebs",
+    "reportOnly": false,
+    "wsl2Detected": true,
+    "summary": {
+      "pass": 0,
+      "warning": 1,
+      "fail": 0,
+      "notTestable": 8
+    }
+  },
+  "checks": [
+    {
+      "category": "Deployment",
+      "status": "WARNING",
+      "title": "Mayastor Helm Release Status",
+      "details": "Mayastor Helm release 'openebs' not present in 'openebs' on WSL2 dev node (INFRASTRUCTURE-DEPENDENT on 4-node NVMe cluster)"
+    },
+    {
+      "category": "CRDs",
+      "status": "NOT_TESTABLE",
+      "title": "Mayastor DiskPool CRD (v1beta3)",
+      "details": "Skipped: Mayastor not deployed on active cluster"
+    },
+    {
+      "category": "ControlPlane",
+      "status": "NOT_TESTABLE",
+      "title": "Mayastor Core / CSI Pods",
+      "details": "Skipped: Mayastor not deployed on active cluster"
+    },
+    {
+      "category": "DataPlane",
+      "status": "NOT_TESTABLE",
+      "title": "Mayastor io-engine DaemonSet",
+      "details": "Skipped: Mayastor not deployed on active cluster"
+    },
+    {
+      "category": "CSINode",
+      "status": "NOT_TESTABLE",
+      "title": "Mayastor csi-node DaemonSet",
+      "details": "Skipped: Mayastor not deployed on active cluster"
+    },
+    {
+      "category": "DiskPools",
+      "status": "NOT_TESTABLE",
+      "title": "DiskPool Online & Capacity Audit",
+      "details": "Skipped: Mayastor not deployed on active cluster"
+    },
+    {
+      "category": "StorageClass",
+      "status": "NOT_TESTABLE",
+      "title": "Mayastor StorageClasses",
+      "details": "Skipped: Mayastor not deployed on active cluster"
+    },
+    {
+      "category": "NVMe-oF",
+      "status": "NOT_TESTABLE",
+      "title": "NVMe-oF TCP Target & Replicas",
+      "details": "Skipped: Mayastor not deployed on active cluster"
+    },
+    {
+      "category": "Integrity",
+      "status": "NOT_TESTABLE",
+      "title": "PVC Provision & Write/Read Probe",
+      "details": "Skipped: Mayastor not deployed on active cluster"
+    }
+  ]
+}

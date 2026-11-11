@@ -1,0 +1,21 @@
+==============================================================================
+      OpenEBS Mayastor (v2.12.2 / Chart 4.6.2) Deployment Validation
+==============================================================================
+Report Date:    2026-11-11T11:16:16Z
+Namespace:      openebs
+Report Mode:    ACTIVE-PROBE
+WSL2 Detected:  true
+Summary:        PASS: 0 | WARN: 1 | FAIL: 0 | N/T: 8
+------------------------------------------------------------------------------
+STATUS | CATEGORY       | CHECK                              | DETAILS
+------------------------------------------------------------------------------
+[WARN] | [Deployment]   | Mayastor Helm Release Status       | Mayastor Helm release 'openebs' not present in 'openebs' on WSL2 dev node (INFRASTRUCTURE-DEPENDENT on 4-node NVMe cluster)
+[NOT_] | [CRDs]         | Mayastor DiskPool CRD (v1beta3)    | Skipped: Mayastor not deployed on active cluster
+[NOT_] | [ControlPlane] | Mayastor Core / CSI Pods           | Skipped: Mayastor not deployed on active cluster
+[NOT_] | [DataPlane]    | Mayastor io-engine DaemonSet       | Skipped: Mayastor not deployed on active cluster
+[NOT_] | [CSINode]      | Mayastor csi-node DaemonSet        | Skipped: Mayastor not deployed on active cluster
+[NOT_] | [DiskPools]    | DiskPool Online & Capacity Audit   | Skipped: Mayastor not deployed on active cluster
+[NOT_] | [StorageClass] | Mayastor StorageClasses            | Skipped: Mayastor not deployed on active cluster
+[NOT_] | [NVMe-oF]      | NVMe-oF TCP Target & Replicas      | Skipped: Mayastor not deployed on active cluster
+[NOT_] | [Integrity]    | PVC Provision & Write/Read Probe   | Skipped: Mayastor not deployed on active cluster
+==============================================================================

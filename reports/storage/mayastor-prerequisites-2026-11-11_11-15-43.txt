@@ -1,0 +1,33 @@
+==============================================================================
+       OpenEBS Mayastor (v2.12.2 / Chart 4.6.2) Prerequisite Audit
+==============================================================================
+Report Date:    2026-11-11T11:15:43Z
+Host / Kernel:  swapnil / 6.6.87.2-microsoft-standard-WSL2
+WSL2 Detected:  true
+Summary:        PASS: 11 | WARN: 4 | FAIL: 6 | N/T: 1
+------------------------------------------------------------------------------
+STATUS | CATEGORY     | CHECK                              | DETAILS
+------------------------------------------------------------------------------
+[WARN] | [Environment] | WSL2 Hypervisor Detection          | Running on WSL2 (6.6.87.2-microsoft-standard-WSL2); hardware NVMe, dedicated SPDK HugePages, and multi-node fabric are unavailable locally
+[PASS] | [CPU]        | x86_64 Architecture                | Architecture verified: x86_64
+[PASS] | [CPU]        | SPDK SSE4.2 Instruction Set        | CPU flags expose required sse4_2 instruction set
+[PASS] | [CPU]        | Core Headroom for SPDK + OS        | 12 CPU cores available (>=2 SPDK polling cores + OS/kubelet headroom)
+[FAIL] | [Memory]     | Total Host RAM Capacity            | 3515 MiB total RAM (2505 MiB available); insufficient for Mayastor io-engine (2GiB HugePages + 1GiB pod + OS)
+[FAIL] | [HugePages]  | 2MiB HugePages Reservation         | 0 x 2MiB pages configured (0 MiB, page size 2048 kB); Mayastor requires >=1024 x 2MiB pages (2048 MiB)
+[WARN] | [Kernel]     | nvme_tcp Initiator Support         | Module nvme_tcp exists for kernel 6.6.87.2-microsoft-standard-WSL2 but is not currently loaded (run 'sudo modprobe nvme_tcp' on target host)
+[PASS] | [Kernel]     | ext4 Filesystem Support            | ext4 filesystem driver available in kernel/modules
+[PASS] | [Kernel]     | xfs Filesystem Support             | Optional xfs filesystem driver available in kernel/modules
+[PASS] | [Storage]    | Read-Only Block Inventory          | Observed 4 disk(s) without modifying any device: /dev/sda[388MiB,none:fstype(ext4),too_small(388MiB<10GiB),wsl2_virtual_disk(none)] /dev/sdb[186MiB,none:fstype(ext4),too_small(186MiB<10GiB),wsl2_virtual_disk(none)] /dev/sdc[1GiB,none:mounted([SWAP]),fstype(swap),too_small(1GiB<10GiB),wsl2_virtual_disk(none)] /dev/sdd[1024GiB,none:mounted(/mnt/wslg/distro),fstype(ext4),wsl2_virtual_disk(none)]
+[FAIL] | [Storage]    | Dedicated Raw Pool Disk Suitability | Zero clean, unformatted, unmounted block devices >=10GiB available (all detected disks contain filesystems, swaps, mountpoints, or WSL2 virtual disks)
+[PASS] | [Network]    | Port 10124 Availability (Mayastor_io_engine_gRPC) | TCP port 10124 is free and unallocated on host
+[PASS] | [Network]    | Port 8420 Availability (NVMe_oF_TCP_IO_Target) | TCP port 8420 is free and unallocated on host
+[PASS] | [Network]    | Port 4421 Availability (NVMe_oF_TCP_Controller) | TCP port 4421 is free and unallocated on host
+[PASS] | [Network]    | Active Host Interfaces             | Detected UP interfaces: lo,eth0,br-0a1dd2b1dbf3,docker0,br-9994ae706c84,flannel.1,cni0,veth9e51751@if2,vethb512e6e@if2,veth31f35a55@if2
+[NOT_] | [Network]    | Multi-Node NVMe-oF TCP Reachability | Cross-node NVMe-oF TCP transport (ports 8420/4421/10124) and MTU verification require active multi-node cluster connectivity
+[PASS] | [Kubernetes] | Helm v3 Availability               | Helm binary available (v3.17.1+g980d8ac)
+[WARN] | [Kubernetes] | Cluster Version Compatibility      | Server v1.36.6+k3s1 matches Candidate B (1.36.x); note upstream Mayastor v2.12.2 CI qualification covers up to v1.35.6 (K8s 1.36 requires explicit cluster validation)
+[FAIL] | [Kubernetes] | 3-Worker Replica Topology          | Only 1/1 Ready node(s); 3-replica Mayastor target design requires >=3 dedicated storage worker nodes
+[FAIL] | [Kubernetes] | Mayastor Engine Node Labels        | Zero nodes carry openebs.io/engine=mayastor scheduling label
+[FAIL] | [Kubernetes] | Node Allocatable hugepages-2Mi     | Only 0 node(s) advertise hugepages-2Mi allocatable capacity; io-engine DaemonSet will remain Pending
+[WARN] | [Kubernetes] | Mayastor DiskPool CRD Presence     | CRD diskpools.openebs.io not yet installed (expected prior to Helm deployment)
+==============================================================================

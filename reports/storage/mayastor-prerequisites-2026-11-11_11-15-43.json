@@ -1,0 +1,150 @@
+{
+  "metadata": {
+    "reportDate": "2026-11-11T11:15:43Z",
+    "hostname": "swapnil",
+    "kernel": "6.6.87.2-microsoft-standard-WSL2",
+    "wsl2Detected": true,
+    "chartTarget": "openebs/openebs:4.6.2",
+    "mayastorTarget": "2.12.2",
+    "summary": {
+      "pass": 11,
+      "warning": 4,
+      "fail": 6,
+      "notTestable": 1
+    }
+  },
+  "checks": [
+    {
+      "category": "Environment",
+      "status": "WARNING",
+      "title": "WSL2 Hypervisor Detection",
+      "details": "Running on WSL2 (6.6.87.2-microsoft-standard-WSL2); hardware NVMe, dedicated SPDK HugePages, and multi-node fabric are unavailable locally"
+    },
+    {
+      "category": "CPU",
+      "status": "PASS",
+      "title": "x86_64 Architecture",
+      "details": "Architecture verified: x86_64"
+    },
+    {
+      "category": "CPU",
+      "status": "PASS",
+      "title": "SPDK SSE4.2 Instruction Set",
+      "details": "CPU flags expose required sse4_2 instruction set"
+    },
+    {
+      "category": "CPU",
+      "status": "PASS",
+      "title": "Core Headroom for SPDK + OS",
+      "details": "12 CPU cores available (>=2 SPDK polling cores + OS/kubelet headroom)"
+    },
+    {
+      "category": "Memory",
+      "status": "FAIL",
+      "title": "Total Host RAM Capacity",
+      "details": "3515 MiB total RAM (2505 MiB available); insufficient for Mayastor io-engine (2GiB HugePages + 1GiB pod + OS)"
+    },
+    {
+      "category": "HugePages",
+      "status": "FAIL",
+      "title": "2MiB HugePages Reservation",
+      "details": "0 x 2MiB pages configured (0 MiB, page size 2048 kB); Mayastor requires >=1024 x 2MiB pages (2048 MiB)"
+    },
+    {
+      "category": "Kernel",
+      "status": "WARNING",
+      "title": "nvme_tcp Initiator Support",
+      "details": "Module nvme_tcp exists for kernel 6.6.87.2-microsoft-standard-WSL2 but is not currently loaded (run 'sudo modprobe nvme_tcp' on target host)"
+    },
+    {
+      "category": "Kernel",
+      "status": "PASS",
+      "title": "ext4 Filesystem Support",
+      "details": "ext4 filesystem driver available in kernel/modules"
+    },
+    {
+      "category": "Kernel",
+      "status": "PASS",
+      "title": "xfs Filesystem Support",
+      "details": "Optional xfs filesystem driver available in kernel/modules"
+    },
+    {
+      "category": "Storage",
+      "status": "PASS",
+      "title": "Read-Only Block Inventory",
+      "details": "Observed 4 disk(s) without modifying any device: /dev/sda[388MiB,none:fstype(ext4),too_small(388MiB<10GiB),wsl2_virtual_disk(none)] /dev/sdb[186MiB,none:fstype(ext4),too_small(186MiB<10GiB),wsl2_virtual_disk(none)] /dev/sdc[1GiB,none:mounted([SWAP]),fstype(swap),too_small(1GiB<10GiB),wsl2_virtual_disk(none)] /dev/sdd[1024GiB,none:mounted(/mnt/wslg/distro),fstype(ext4),wsl2_virtual_disk(none)]"
+    },
+    {
+      "category": "Storage",
+      "status": "FAIL",
+      "title": "Dedicated Raw Pool Disk Suitability",
+      "details": "Zero clean, unformatted, unmounted block devices >=10GiB available (all detected disks contain filesystems, swaps, mountpoints, or WSL2 virtual disks)"
+    },
+    {
+      "category": "Network",
+      "status": "PASS",
+      "title": "Port 10124 Availability (Mayastor_io_engine_gRPC)",
+      "details": "TCP port 10124 is free and unallocated on host"
+    },
+    {
+      "category": "Network",
+      "status": "PASS",
+      "title": "Port 8420 Availability (NVMe_oF_TCP_IO_Target)",
+      "details": "TCP port 8420 is free and unallocated on host"
+    },
+    {
+      "category": "Network",
+      "status": "PASS",
+      "title": "Port 4421 Availability (NVMe_oF_TCP_Controller)",
+      "details": "TCP port 4421 is free and unallocated on host"
+    },
+    {
+      "category": "Network",
+      "status": "PASS",
+      "title": "Active Host Interfaces",
+      "details": "Detected UP interfaces: lo,eth0,br-0a1dd2b1dbf3,docker0,br-9994ae706c84,flannel.1,cni0,veth9e51751@if2,vethb512e6e@if2,veth31f35a55@if2"
+    },
+    {
+      "category": "Network",
+      "status": "NOT_TESTABLE",
+      "title": "Multi-Node NVMe-oF TCP Reachability",
+      "details": "Cross-node NVMe-oF TCP transport (ports 8420/4421/10124) and MTU verification require active multi-node cluster connectivity"
+    },
+    {
+      "category": "Kubernetes",
+      "status": "PASS",
+      "title": "Helm v3 Availability",
+      "details": "Helm binary available (v3.17.1+g980d8ac)"
+    },
+    {
+      "category": "Kubernetes",
+      "status": "WARNING",
+      "title": "Cluster Version Compatibility",
+      "details": "Server v1.36.6+k3s1 matches Candidate B (1.36.x); note upstream Mayastor v2.12.2 CI qualification covers up to v1.35.6 (K8s 1.36 requires explicit cluster validation)"
+    },
+    {
+      "category": "Kubernetes",
+      "status": "FAIL",
+      "title": "3-Worker Replica Topology",
+      "details": "Only 1/1 Ready node(s); 3-replica Mayastor target design requires >=3 dedicated storage worker nodes"
+    },
+    {
+      "category": "Kubernetes",
+      "status": "FAIL",
+      "title": "Mayastor Engine Node Labels",
+      "details": "Zero nodes carry openebs.io/engine=mayastor scheduling label"
+    },
+    {
+      "category": "Kubernetes",
+      "status": "FAIL",
+      "title": "Node Allocatable hugepages-2Mi",
+      "details": "Only 0 node(s) advertise hugepages-2Mi allocatable capacity; io-engine DaemonSet will remain Pending"
+    },
+    {
+      "category": "Kubernetes",
+      "status": "WARNING",
+      "title": "Mayastor DiskPool CRD Presence",
+      "details": "CRD diskpools.openebs.io not yet installed (expected prior to Helm deployment)"
+    }
+  ]
+}

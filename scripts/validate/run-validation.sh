@@ -170,12 +170,25 @@ fi
 K8S_MANIFESTS=()
 while IFS= read -r kfile; do
     K8S_MANIFESTS+=("${kfile}")
-done < <(find "${REPO_ROOT}/infrastructure" "${REPO_ROOT}/kubevirt" "${REPO_ROOT}/storage" -type f \( -name "*.yaml" -o -name "*.yml" \) ! -name "kubeadm-init-config.yaml" 2>/dev/null || true)
+done < <(find "${REPO_ROOT}/infrastructure" "${REPO_ROOT}/kubevirt" "${REPO_ROOT}/storage" -type f \( -name "*.yaml" -o -name "*.yml" \) ! -name "kubeadm-init-config.yaml" ! -name "chart-metadata.yaml" ! -name "values.yaml" 2>/dev/null || true)
 
 if [[ "${#K8S_MANIFESTS[@]}" -gt 0 ]]; then
-    CRD_SCHEMA_TMPL="${REPO_ROOT}/infrastructure/k8s/calico/schemas/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json"
-    if ! kubeconform -strict -summary -schema-location default -schema-location "${CRD_SCHEMA_TMPL}" "${K8S_MANIFESTS[@]}"; then
+    CALICO_SCHEMA_TMPL="${REPO_ROOT}/infrastructure/k8s/calico/schemas/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json"
+    MAYASTOR_SCHEMA_TMPL="${REPO_ROOT}/infrastructure/storage/mayastor/schemas/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json"
+    if ! kubeconform -strict -summary -schema-location default -schema-location "${CALICO_SCHEMA_TMPL}" -schema-location "${MAYASTOR_SCHEMA_TMPL}" "${K8S_MANIFESTS[@]}"; then
         SCHEMA_STEP_OK=false
+    fi
+fi
+
+if [[ -f "${REPO_ROOT}/infrastructure/storage/openebs/chart-metadata.yaml" ]] && [[ -f "${REPO_ROOT}/infrastructure/storage/openebs/values.yaml" ]]; then
+    if ! yq eval 'true' "${REPO_ROOT}/infrastructure/storage/openebs/chart-metadata.yaml" >/dev/null || ! yq eval 'true' "${REPO_ROOT}/infrastructure/storage/openebs/values.yaml" >/dev/null; then
+        echo "    Helm metadata/values YAML structural parse failed" >&2
+        SCHEMA_STEP_OK=false
+    elif grep -qE '^\s*tag:\s*["'\'']?latest["'\'']?' "${REPO_ROOT}/infrastructure/storage/openebs/values.yaml"; then
+        echo "    Forbidden :latest image tag detected in OpenEBS values.yaml" >&2
+        SCHEMA_STEP_OK=false
+    else
+        echo "    OpenEBS chart-metadata.yaml & values.yaml parse/version check [ok]"
     fi
 fi
 
