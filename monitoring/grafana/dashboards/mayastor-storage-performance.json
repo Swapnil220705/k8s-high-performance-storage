@@ -1,0 +1,114 @@
+{
+  "uid": "mayastor-storage-perf",
+  "title": "Mayastor SPDK & Pool Performance (v2.12.2)",
+  "tags": ["mayastor", "spdk", "nvme-of", "storage"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "15s",
+  "time": {"from": "now-1h", "to": "now"},
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Online DiskPools",
+      "gridPos": {"x": 0, "y": 0, "w": 6, "h": 4},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "count(diskpool_status == 1) or vector(0)"}]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Degraded / Faulted DiskPools",
+      "gridPos": {"x": 6, "y": 0, "w": 6, "h": 4},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "count(diskpool_status != 1) or vector(0)"}]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Online Mayastor Storage Nodes",
+      "gridPos": {"x": 12, "y": 0, "w": 6, "h": 4},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "count(mayastor_node_online == 1) or vector(0)"}]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Stalled DiskPools",
+      "gridPos": {"x": 18, "y": 0, "w": 6, "h": 4},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "count(diskpool_io_stalled > 0) or vector(0)"}]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Volume Read & Write IOPS (Nexus / PV)",
+      "gridPos": {"x": 0, "y": 4, "w": 12, "h": 8},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"refId": "A", "expr": "sum by (pv_name) (rate(volume_num_read_ops[5m]))", "legendFormat": "read {{pv_name}}"},
+        {"refId": "B", "expr": "sum by (pv_name) (rate(volume_num_write_ops[5m]))", "legendFormat": "write {{pv_name}}"}
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Volume Read & Write Throughput (Bytes/s)",
+      "gridPos": {"x": 12, "y": 4, "w": 12, "h": 8},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "Bps"}},
+      "targets": [
+        {"refId": "A", "expr": "sum by (pv_name) (rate(volume_bytes_read[5m]))", "legendFormat": "read {{pv_name}}"},
+        {"refId": "B", "expr": "sum by (pv_name) (rate(volume_bytes_written[5m]))", "legendFormat": "write {{pv_name}}"}
+      ]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Volume Mean Read & Write Latency (us)",
+      "gridPos": {"x": 0, "y": 12, "w": 12, "h": 8},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "µs"}},
+      "targets": [
+        {"refId": "A", "expr": "rate(volume_read_latency_us[5m]) / clamp_min(rate(volume_num_read_ops[5m]), 1)", "legendFormat": "read mean {{pv_name}}"},
+        {"refId": "B", "expr": "rate(volume_write_latency_us[5m]) / clamp_min(rate(volume_num_write_ops[5m]), 1)", "legendFormat": "write mean {{pv_name}}"}
+      ]
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "DiskPool Used vs Committed vs Total Bytes",
+      "gridPos": {"x": 12, "y": 12, "w": 12, "h": 8},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "bytes"}},
+      "targets": [
+        {"refId": "A", "expr": "diskpool_used_size_bytes", "legendFormat": "used {{name}} ({{node}})"},
+        {"refId": "B", "expr": "diskpool_committed_size_bytes", "legendFormat": "committed {{name}} ({{node}})"},
+        {"refId": "C", "expr": "diskpool_total_size_bytes", "legendFormat": "total {{name}} ({{node}})"}
+      ]
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Replica Write IOPS & Pool I/O Error Counters",
+      "gridPos": {"x": 0, "y": 20, "w": 12, "h": 7},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"refId": "A", "expr": "sum by (pool_name, pv_name) (rate(replica_num_write_ops[5m]))", "legendFormat": "replica write {{pool_name}}/{{pv_name}}"},
+        {"refId": "B", "expr": "diskpool_io_error_count", "legendFormat": "io_errors {{name}}"}
+      ]
+    },
+    {
+      "id": 10,
+      "type": "text",
+      "title": "Verified v2.12.2 Exporter Scope & Explicit Metric Gaps",
+      "gridPos": {"x": 12, "y": 20, "w": 12, "h": 7},
+      "options": {
+        "mode": "markdown",
+        "content": "**Verified Exporter:** `openebs/mayastor-metrics-exporter-io-engine:v2.12.2` (port `9502`).\n\n- **Mean vs Percentile Latency:** Mayastor v2.12.2 exposes cumulative `*_latency_us` totals (shown above as mean latency) rather than Prometheus histogram `_bucket` series. Empirical `p50/p95/p99/p99.9` latency tails are measured via `benchmarks/fio/*.fio` JSON.\n- **Rebuild Progress:** Exporter v2.12.2 does not emit `volume_rebuild_progress_percent`. Inspect `diskpool_status`, `diskpool_io_*`, and Mayastor REST API `/v0/volumes` via `scripts/tests/storage/observe-rebuild-events.sh`."
+      }
+    }
+  ]
+}
+

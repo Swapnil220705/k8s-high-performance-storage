@@ -1,0 +1,61 @@
+{
+  "report_date_utc": "2026-11-11T12:29:40Z",
+  "namespace": "monitoring",
+  "wsl2_detected": true,
+  "summary": {
+    "pass": 4,
+    "warning": 1,
+    "fail": 0,
+    "not_testable": 3
+  },
+  "checks": [
+    {
+      "status": "PASS",
+      "category": "Prometheus",
+      "title": "promtool Scrape Config Check",
+      "details": "promtool check config PASS (5 scrape job(s) validated)"
+    },
+    {
+      "status": "PASS",
+      "category": "Alerts",
+      "title": "promtool Alert Rule & PromQL Check",
+      "details": "promtool check rules PASS (10 rules checked)"
+    },
+    {
+      "status": "PASS",
+      "category": "Schemas",
+      "title": "Monitoring CRD Schema Validation",
+      "details": "Namespace, ServiceMonitors, and PrometheusRule pass kubeconform -strict"
+    },
+    {
+      "status": "PASS",
+      "category": "Grafana",
+      "title": "Grafana Dashboard JSON Audit",
+      "details": "All 3 custom dashboards valid JSON with >=8 panels each"
+    },
+    {
+      "status": "WARNING",
+      "category": "Runtime",
+      "title": "Monitoring Stack Deployment State",
+      "details": "Namespace 'monitoring' absent (intentional on 3.5 GiB WSL2 dev host)"
+    },
+    {
+      "status": "NOT_TESTABLE",
+      "category": "Runtime",
+      "title": "Prometheus & Grafana Pod Health",
+      "details": "Skipped: kube-prometheus-stack not deployed"
+    },
+    {
+      "status": "NOT_TESTABLE",
+      "category": "Runtime",
+      "title": "Internal ClusterIP Security Audit",
+      "details": "Skipped: kube-prometheus-stack not deployed"
+    },
+    {
+      "status": "NOT_TESTABLE",
+      "category": "Runtime",
+      "title": "Live Mayastor & KubeVirt Targets",
+      "details": "Skipped: kube-prometheus-stack not deployed"
+    }
+  ]
+}

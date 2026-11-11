@@ -1,0 +1,18 @@
+==============================================================================
+              Observability Stack Validation Report
+==============================================================================
+Report Date:    2026-11-11T12:29:40Z
+WSL2 Detected:  true
+Summary:        PASS: 4 | WARN: 1 | FAIL: 0 | N/T: 3
+------------------------------------------------------------------------------
+STATUS | CATEGORY       | CHECK                              | DETAILS
+------------------------------------------------------------------------------
+[PASS] | [Prometheus  ] | promtool Scrape Config Check       | promtool check config PASS (5 scrape job(s) validated)
+[PASS] | [Alerts      ] | promtool Alert Rule & PromQL Check | promtool check rules PASS (10 rules checked)
+[PASS] | [Schemas     ] | Monitoring CRD Schema Validation   | Namespace, ServiceMonitors, and PrometheusRule pass kubeconform -strict
+[PASS] | [Grafana     ] | Grafana Dashboard JSON Audit       | All 3 custom dashboards valid JSON with >=8 panels each
+[WARN] | [Runtime     ] | Monitoring Stack Deployment State  | Namespace 'monitoring' absent (intentional on 3.5 GiB WSL2 dev host)
+[NOT_] | [Runtime     ] | Prometheus & Grafana Pod Health    | Skipped: kube-prometheus-stack not deployed
+[NOT_] | [Runtime     ] | Internal ClusterIP Security Audit  | Skipped: kube-prometheus-stack not deployed
+[NOT_] | [Runtime     ] | Live Mayastor & KubeVirt Targets   | Skipped: kube-prometheus-stack not deployed
+==============================================================================

@@ -1,0 +1,43 @@
+# ==============================================================================
+# Observability Stack Version & Verified Metric Inventory Metadata
+# Project: Deploy High-Performance Storage for Kubernetes (SWFW_5S_08)
+# Verification Date: 2026-11-11 (Upstream chart & source exporters audited)
+# ==============================================================================
+metadata:
+  verificationDate: "2026-11-11"
+  helmChart:
+    repository: "https://prometheus-community.github.io/helm-charts"
+    name: "kube-prometheus-stack"
+    version: "93.2.0"
+    publishedAt: "2026-11-11T02:09:48Z"
+    appVersion: "v0.95.2"
+    kubeVersionConstraint: ">=1.25.0-0"
+  bundledComponents:
+    prometheusOperator: "v0.95.2"
+    prometheus: "v3.16.0"
+    grafanaSubchart: "14.4.1"
+    grafanaAppVersion: "13.3.1"
+    kubeStateMetricsSubchart: "9.0.0"
+    nodeExporterSubchart: "5.1.0"
+  exposurePolicy:
+    serviceType: "ClusterIP"
+    ports:
+      prometheus: 9090
+      grafana: 3000
+      nodeExporter: 9100
+      mayastorExporter: 9502
+      kubevirtMetrics: 8443
+    rule: "Internal management cluster access ONLY via kubectl port-forward; zero NodePort/LoadBalancer firewall exposure."
+  verifiedUpstreamMetricGaps:
+    - component: "openebs/mayastor-metrics-exporter-io-engine:v2.12.2"
+      gap: "Does NOT expose Prometheus latency histogram _bucket metrics (p50/p95/p99)."
+      mitigation: >-
+        Grafana displays exact mean latency rates
+        (rate(volume_read_latency_us[5m]) / rate(volume_num_read_ops[5m])),
+        while empirical p50/p95/p99/p99.9 percentiles come from FIO JSON benchmarks.
+    - component: "openebs/mayastor-metrics-exporter-io-engine:v2.12.2"
+      gap: "Does NOT expose per-volume rebuild percentage or Nexus Online/Degraded state gauges in Prometheus."
+      mitigation: "Track DiskPool health/IO stalls via diskpool_status & diskpool_io_*, and query Mayastor REST API /v0/volumes via observe-rebuild-events.sh."
+    - component: "docker.io/itsthenetwork/nfs-server-alpine:12"
+      gap: "Alpine kernel NFSv4 server container does not bundle a Prometheus exporter."
+      mitigation: "Monitor NFS RWX path indirectly via KubeVirt kubevirt_vmi_storage_*, underlying Mayastor RWO volume_*, and host node_nfs_*/node_network_* metrics."

@@ -1,0 +1,56 @@
+---
+# Mayastor v2.12.2 IO Engine & Pool Prometheus ServiceMonitor (monitoring.coreos.com/v1)
+# Verified against openebs/openebs v4.6.2 Service template:
+#   labels: app=metrics-exporter-io-engine, port name: metrics (TCP 9502)
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: mayastor-io-engine-metrics
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: mayastor-metrics
+    app.kubernetes.io/part-of: k8s-high-performance-storage
+    release: kube-prometheus-stack
+spec:
+  namespaceSelector:
+    matchNames:
+      - openebs
+  selector:
+    matchLabels:
+      app: metrics-exporter-io-engine
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 15s
+      scrapeTimeout: 10s
+      honorLabels: true
+---
+# KubeVirt v1.9.1 Control-Plane & Hypervisor ServiceMonitor (monitoring.coreos.com/v1)
+# Verified against kubevirt/kubevirt v1.9.1 pkg/virt-operator/resource/generate/components/prometheus.go:
+#   selector: prometheus.kubevirt.io="true", scheme: https, port: metrics (TCP 8443)
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: kubevirt-metrics
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: kubevirt-metrics
+    app.kubernetes.io/part-of: k8s-high-performance-storage
+    release: kube-prometheus-stack
+    prometheus.kubevirt.io: "true"
+spec:
+  namespaceSelector:
+    matchNames:
+      - kubevirt
+  selector:
+    matchLabels:
+      prometheus.kubevirt.io: "true"
+  endpoints:
+    - port: metrics
+      scheme: https
+      path: /metrics
+      interval: 15s
+      scrapeTimeout: 10s
+      honorLabels: true
+      tlsConfig:
+        insecureSkipVerify: true

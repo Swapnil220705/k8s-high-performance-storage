@@ -1,0 +1,75 @@
+{
+  "report_date_utc": "2026-11-11T12:36:44Z",
+  "mode": "local-validation",
+  "wsl2_detected": true,
+  "detected_components": {
+    "kubernetes_reachable": true,
+    "ready_nodes": 1,
+    "mayastor_deployed": false,
+    "kubevirt_deployed": false,
+    "monitoring_deployed": false
+  },
+  "summary": {
+    "pass": 1,
+    "warning": 0,
+    "skip_infrastructure_dependent": 8,
+    "fail": 0
+  },
+  "stage_log_archive": "/mnt/c/Users/swapn/projects/k8s-high-performance-storage/reports/integration/project-demo-2026-11-11_12-36-44.stages.log",
+  "stages": [
+    {
+      "stage": "Stage 1",
+      "title": "Kubernetes Cluster Readiness",
+      "status": "PASS",
+      "details": "Cluster reachable (1 Ready node(s)); validate-kubernetes-cluster PASS"
+    },
+    {
+      "stage": "Stage 2",
+      "title": "OpenEBS Mayastor Readiness",
+      "status": "SKIP_INFRA",
+      "details": "Helm/CRDs validated locally; live SPDK/NVMe-oF absent (INFRASTRUCTURE-DEPENDENT)"
+    },
+    {
+      "stage": "Stage 3",
+      "title": "PVC & Integrity Verification",
+      "status": "SKIP_INFRA",
+      "details": "Local SHA-256 cycle PASS; live Mayastor PVC provisioning skipped (INFRASTRUCTURE-DEPENDENT)"
+    },
+    {
+      "stage": "Stage 4",
+      "title": "KubeVirt & CDI Stack",
+      "status": "SKIP_INFRA",
+      "details": "KVM/CRD/dry-run checks PASS; live virt-handler skipped on dev host"
+    },
+    {
+      "stage": "Stage 5",
+      "title": "VM Persistent Storage Tiers",
+      "status": "SKIP_INFRA",
+      "details": "All VM tier manifests & cloud-init validated; live VMs INFRASTRUCTURE-DEPENDENT"
+    },
+    {
+      "stage": "Stage 6",
+      "title": "FIO Benchmark Matrix Pipeline",
+      "status": "SKIP_INFRA",
+      "details": "6 FIO profiles + JSON parser + safety gates PASS; bare-metal NVMe IOPS INFRASTRUCTURE-DEPENDENT"
+    },
+    {
+      "stage": "Stage 7",
+      "title": "Prometheus & Grafana Telemetry",
+      "status": "SKIP_INFRA",
+      "details": "promtool config/rules + CRDs + 3 dashboards PASS; live scraping INFRASTRUCTURE-DEPENDENT"
+    },
+    {
+      "stage": "Stage 8",
+      "title": "Storage Resilience & Recovery",
+      "status": "SKIP_INFRA",
+      "details": "Resilience config & drill harness PASS; fault injection INFRASTRUCTURE-DEPENDENT"
+    },
+    {
+      "stage": "Stage 9",
+      "title": "Live Migration & Hot-Plugging",
+      "status": "SKIP_INFRA",
+      "details": "MigrationPolicy & LiveUpdate checks PASS; cross-node move INFRASTRUCTURE-DEPENDENT"
+    }
+  ]
+}

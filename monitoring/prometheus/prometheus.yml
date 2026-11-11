@@ -1,0 +1,62 @@
+---
+# Standalone Prometheus Scrape Configuration (Prometheus v3.16.0)
+# Validated offline with: promtool check config monitoring/prometheus/prometheus.yml
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+rule_files:
+  - /etc/prometheus/rules/*.yaml
+
+scrape_configs:
+  - job_name: "prometheus-self"
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: "node-exporter"
+    kubernetes_sd_configs:
+      - role: endpoints
+        namespaces:
+          names: ["monitoring"]
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
+        action: keep
+        regex: .*-prometheus-node-exporter;http-metrics
+
+  - job_name: "mayastor-io-engine-metrics"
+    metrics_path: /metrics
+    kubernetes_sd_configs:
+      - role: endpoints
+        namespaces:
+          names: ["openebs"]
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_service_label_app, __meta_kubernetes_endpoint_port_name]
+        action: keep
+        regex: metrics-exporter-io-engine;metrics
+      - source_labels: [__meta_kubernetes_endpoint_node_name]
+        target_label: node
+
+  - job_name: "mayastor-nats-metrics"
+    metrics_path: /metrics
+    kubernetes_sd_configs:
+      - role: endpoints
+        namespaces:
+          names: ["openebs"]
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_name, __meta_kubernetes_endpoint_port_name]
+        action: keep
+        regex: nats;metrics
+
+  - job_name: "kubevirt-metrics"
+    scheme: https
+    metrics_path: /metrics
+    tls_config:
+      insecure_skip_verify: true
+    kubernetes_sd_configs:
+      - role: endpoints
+        namespaces:
+          names: ["kubevirt"]
+    relabel_configs:
+      - source_labels: [__meta_kubernetes_service_label_prometheus_kubevirt_io, __meta_kubernetes_endpoint_port_name]
+        action: keep
+        regex: true;metrics

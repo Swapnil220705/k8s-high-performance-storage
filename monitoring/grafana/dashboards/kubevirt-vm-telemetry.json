@@ -1,0 +1,95 @@
+{
+  "uid": "kubevirt-vm-telemetry",
+  "title": "KubeVirt VM Storage & Live Migration Telemetry (v1.9.1)",
+  "tags": ["kubevirt", "vm", "live-migration", "storage"],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "15s",
+  "time": {"from": "now-1h", "to": "now"},
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Running VirtualMachineInstances",
+      "gridPos": {"x": 0, "y": 0, "w": 6, "h": 4},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "count(kubevirt_vmi_info{phase=\"Running\"}) or vector(0)"}]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Non-Evictable LiveMigrate VMIs",
+      "gridPos": {"x": 6, "y": 0, "w": 6, "h": 4},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "sum(kubevirt_vmi_non_evictable) or vector(0)"}]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Active Running Migrations",
+      "gridPos": {"x": 12, "y": 0, "w": 6, "h": 4},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [{"refId": "A", "expr": "sum(kubevirt_vmi_migrations_in_running_phase) or vector(0)"}]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Migrations Succeeded / Failed",
+      "gridPos": {"x": 18, "y": 0, "w": 6, "h": 4},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"refId": "A", "expr": "sum(kubevirt_vmi_migration_succeeded) or vector(0)", "legendFormat": "succeeded"},
+        {"refId": "B", "expr": "sum(kubevirt_vmi_migration_failed) or vector(0)", "legendFormat": "failed"}
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "VM Virtual Disk IOPS (Read / Write)",
+      "gridPos": {"x": 0, "y": 4, "w": 12, "h": 8},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"refId": "A", "expr": "sum by (namespace, name, drive) (rate(kubevirt_vmi_storage_iops_read_total[5m]))", "legendFormat": "read {{name}}:{{drive}}"},
+        {"refId": "B", "expr": "sum by (namespace, name, drive) (rate(kubevirt_vmi_storage_iops_write_total[5m]))", "legendFormat": "write {{name}}:{{drive}}"}
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "VM Storage Throughput (Bytes/s)",
+      "gridPos": {"x": 12, "y": 4, "w": 12, "h": 8},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "fieldConfig": {"defaults": {"unit": "Bps"}},
+      "targets": [
+        {"refId": "A", "expr": "sum by (namespace, name, drive) (rate(kubevirt_vmi_storage_read_traffic_bytes_total[5m]))", "legendFormat": "read {{name}}:{{drive}}"},
+        {"refId": "B", "expr": "sum by (namespace, name, drive) (rate(kubevirt_vmi_storage_write_traffic_bytes_total[5m]))", "legendFormat": "write {{name}}:{{drive}}"}
+      ]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "VM Mean Storage Latency & Flush Rate",
+      "gridPos": {"x": 0, "y": 12, "w": 12, "h": 8},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"refId": "A", "expr": "rate(kubevirt_vmi_storage_read_times_seconds_total[5m]) / clamp_min(rate(kubevirt_vmi_storage_iops_read_total[5m]), 1)", "legendFormat": "read lat(s) {{name}}:{{drive}}"},
+        {"refId": "B", "expr": "rate(kubevirt_vmi_storage_write_times_seconds_total[5m]) / clamp_min(rate(kubevirt_vmi_storage_iops_write_total[5m]), 1)", "legendFormat": "write lat(s) {{name}}:{{drive}}"},
+        {"refId": "C", "expr": "rate(kubevirt_vmi_storage_flush_requests_total[5m])", "legendFormat": "flushes/s {{name}}:{{drive}}"}
+      ]
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "VM CPU Usage, Resident Memory & Migration P95 Duration",
+      "gridPos": {"x": 12, "y": 12, "w": 12, "h": 8},
+      "datasource": {"type": "prometheus", "uid": "prometheus"},
+      "targets": [
+        {"refId": "A", "expr": "sum by (namespace, name) (rate(kubevirt_vmi_cpu_usage_seconds_total[5m]))", "legendFormat": "cpu cores {{name}}"},
+        {"refId": "B", "expr": "kubevirt_vmi_memory_resident_bytes", "legendFormat": "rss bytes {{name}}"},
+        {"refId": "C", "expr": "histogram_quantile(0.95, sum by (le, phase) (rate(kubevirt_vmi_migration_phase_transition_time_from_creation_seconds_bucket[15m])))", "legendFormat": "migr p95 {{phase}}"}
+      ]
+    }
+  ]
+}
+

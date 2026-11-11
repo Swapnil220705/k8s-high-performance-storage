@@ -1,0 +1,19 @@
+==============================================================================
+       Zoho SETU SWFW_5S_08 — Integrated Project Demo Report
+==============================================================================
+Report Date:      2026-11-11T12:36:44Z
+Mode:             local-validation
+WSL2 Detected:    true
+Ready Nodes:      1
+Summary:          PASS: 1 | WARN: 0 | SKIP_INFRA: 8 | FAIL: 0
+------------------------------------------------------------------------------
+[PASS      ] | Stage 1  | Kubernetes Cluster Readiness     | Cluster reachable (1 Ready node(s)); validate-kubernetes-cluster PASS
+[SKIP_INFRA] | Stage 2  | OpenEBS Mayastor Readiness       | Helm/CRDs validated locally; live SPDK/NVMe-oF absent (INFRASTRUCTURE-DEPENDENT)
+[SKIP_INFRA] | Stage 3  | PVC & Integrity Verification     | Local SHA-256 cycle PASS; live Mayastor PVC provisioning skipped (INFRASTRUCTURE-DEPENDENT)
+[SKIP_INFRA] | Stage 4  | KubeVirt & CDI Stack             | KVM/CRD/dry-run checks PASS; live virt-handler skipped on dev host
+[SKIP_INFRA] | Stage 5  | VM Persistent Storage Tiers      | All VM tier manifests & cloud-init validated; live VMs INFRASTRUCTURE-DEPENDENT
+[SKIP_INFRA] | Stage 6  | FIO Benchmark Matrix Pipeline    | 6 FIO profiles + JSON parser + safety gates PASS; bare-metal NVMe IOPS INFRASTRUCTURE-DEPENDENT
+[SKIP_INFRA] | Stage 7  | Prometheus & Grafana Telemetry   | promtool config/rules + CRDs + 3 dashboards PASS; live scraping INFRASTRUCTURE-DEPENDENT
+[SKIP_INFRA] | Stage 8  | Storage Resilience & Recovery    | Resilience config & drill harness PASS; fault injection INFRASTRUCTURE-DEPENDENT
+[SKIP_INFRA] | Stage 9  | Live Migration & Hot-Plugging    | MigrationPolicy & LiveUpdate checks PASS; cross-node move INFRASTRUCTURE-DEPENDENT
+==============================================================================

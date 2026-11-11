@@ -1,0 +1,16 @@
+---
+# Isolated namespace for Prometheus, Grafana, Alerting, and node/cluster telemetry.
+# PSA enforce: privileged is required exclusively by prometheus-node-exporter DaemonSet
+# (hostNetwork, hostPID, root hostPath / read-only mount). Prometheus & Grafana containers
+# execute unprivileged (runAsNonRoot: true) per least-privilege best practices.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+  labels:
+    app.kubernetes.io/name: monitoring
+    app.kubernetes.io/part-of: k8s-high-performance-storage
+    pod-security.kubernetes.io/enforce: privileged
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/audit: baseline
+    pod-security.kubernetes.io/warn: baseline

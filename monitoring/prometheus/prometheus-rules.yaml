@@ -1,0 +1,119 @@
+---
+# Verified Prometheus Alerting Rules for Mayastor v2.12.2, KubeVirt v1.9.1 & Cluster Nodes
+# All metric names verified against upstream v2.12.2 / v1.9.1 exporter sources (2026-11-11).
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: storage-virtualization-alerts
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: storage-virtualization-alerts
+    app.kubernetes.io/part-of: k8s-high-performance-storage
+    release: kube-prometheus-stack
+spec:
+  groups:
+    - name: mayastor.storage.rules
+      rules:
+        - alert: MayastorDiskPoolDegraded
+          expr: diskpool_status == 2
+          for: 1m
+          labels:
+            severity: warning
+            component: mayastor
+          annotations:
+            summary: "Mayastor DiskPool {{ $labels.name }} on {{ $labels.node }} is Degraded"
+            description: "diskpool_status reported 2 (Degraded) for pool {{ $labels.name }} on node {{ $labels.node }}."
+
+        - alert: MayastorDiskPoolFaultedOrOffline
+          expr: diskpool_status != 1 and diskpool_status != 2
+          for: 30s
+          labels:
+            severity: critical
+            component: mayastor
+          annotations:
+            summary: "Mayastor DiskPool {{ $labels.name }} is Faulted, Suspected, or Unknown"
+            description: "diskpool_status={{ $value }} for pool {{ $labels.name }} on {{ $labels.node }} (0=Unknown, 1=Online, 2=Degraded, 3=Faulted, 4=Suspected)."
+
+        - alert: MayastorDiskPoolIOStalled
+          expr: diskpool_io_stalled > 0
+          for: 30s
+          labels:
+            severity: critical
+            component: mayastor
+          annotations:
+            summary: "Mayastor DiskPool {{ $labels.name }} I/O Stalled"
+            description: "Underlying NVMe/block device for pool {{ $labels.name }} on {{ $labels.node }} is reporting stalled I/O."
+
+        - alert: MayastorDiskPoolIOErrorsElevated
+          expr: diskpool_io_error_count > 0
+          for: 1m
+          labels:
+            severity: warning
+            component: mayastor
+          annotations:
+            summary: "Mayastor DiskPool {{ $labels.name }} detected I/O errors"
+            description: "diskpool_io_error_count={{ $value }} on node {{ $labels.node }}."
+
+        - alert: MayastorDiskPoolCapacityCritical
+          expr: (diskpool_used_size_bytes / clamp_min(diskpool_total_size_bytes, 1)) > 0.85
+          for: 5m
+          labels:
+            severity: warning
+            component: mayastor
+          annotations:
+            summary: "Mayastor DiskPool {{ $labels.name }} > 85% full"
+            description: "Used capacity ratio is {{ $value | humanizePercentage }} on pool {{ $labels.name }}."
+
+        - alert: MayastorStorageNodeOffline
+          expr: mayastor_node_online == 0
+          for: 1m
+          labels:
+            severity: critical
+            component: mayastor
+          annotations:
+            summary: "Mayastor storage node {{ $labels.node_id }} is offline"
+            description: "mayastor_node_online==0 for node_id={{ $labels.node_id }}; replicated volumes may run degraded."
+
+    - name: kubevirt.vm.rules
+      rules:
+        - alert: KubeVirtVMINonEvictableWithLiveMigrate
+          expr: kubevirt_vmi_non_evictable > 0
+          for: 2m
+          labels:
+            severity: warning
+            component: kubevirt
+          annotations:
+            summary: "KubeVirt VMI {{ $labels.namespace }}/{{ $labels.name }} marked NonEvictable"
+            description: "VMI has LiveMigrate evictionStrategy configured but cannot migrate safely (check RWX/topology constraints)."
+
+        - alert: KubeVirtMigrationFailed
+          expr: increase(kubevirt_vmi_migration_failed[10m]) > 0
+          for: 0m
+          labels:
+            severity: critical
+            component: kubevirt
+          annotations:
+            summary: "KubeVirt live migration failure detected in {{ $labels.namespace }}"
+            description: "One or more VMI live migrations entered Failed phase in the last 10 minutes."
+
+    - name: kubernetes.infrastructure.rules
+      rules:
+        - alert: KubernetesNodeNotReady
+          expr: kube_node_status_condition{condition="Ready",status="true"} == 0
+          for: 2m
+          labels:
+            severity: critical
+            component: kubernetes
+          annotations:
+            summary: "Kubernetes node {{ $labels.node }} is NotReady"
+            description: "Node {{ $labels.node }} failed Ready condition for > 2 minutes."
+
+        - alert: KubernetesPersistentVolumeFillingUp
+          expr: (kubelet_volume_stats_used_bytes / clamp_min(kubelet_volume_stats_capacity_bytes, 1)) > 0.85
+          for: 5m
+          labels:
+            severity: warning
+            component: kubernetes-storage
+          annotations:
+            summary: "PVC {{ $labels.namespace }}/{{ $labels.persistentvolumeclaim }} > 85% full"
+            description: "Volume utilization exceeded 85% ({{ $value | humanizePercentage }})."

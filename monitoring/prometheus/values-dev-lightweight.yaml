@@ -1,0 +1,42 @@
+# ==============================================================================
+# Constrained / Small-Lab Overlay Values for kube-prometheus-stack v93.2.0
+# Use alongside values.yaml on constrained test clusters:
+#   helm upgrade --install monitoring prometheus-community/kube-prometheus-stack \
+#     --version 93.2.0 -n monitoring -f values.yaml -f values-dev-lightweight.yaml
+# Notice: Still NOT auto-installed on 3.5 GiB WSL2 single-node host unless explicitly
+#         requested by operator during constrained validation windows.
+# ==============================================================================
+
+alertmanager:
+  enabled: false
+
+prometheus:
+  prometheusSpec:
+    scrapeInterval: "30s"
+    evaluationInterval: "30s"
+    retention: "2d"
+    resources:
+      requests:
+        cpu: "100m"
+        memory: "256Mi"
+      limits:
+        cpu: "500m"
+        memory: "512Mi"
+
+grafana:
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "128Mi"
+    limits:
+      cpu: "250m"
+      memory: "256Mi"
+
+kube-state-metrics:
+  resources:
+    requests:
+      cpu: "25m"
+      memory: "48Mi"
+    limits:
+      cpu: "100m"
+      memory: "96Mi"

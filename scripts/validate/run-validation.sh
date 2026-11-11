@@ -11,8 +11,11 @@
 #   4. shfmt Style & Formatting Check
 #   5. yamllint Configuration Validation (.yamllint.yaml)
 #   6. kubeconform Kubernetes Manifest Validation
-#   7. JSON Parsing Integrity (jq validation on reports/)
+#   7. JSON Parsing Integrity (jq validation across repo & dashboards)
 #   8. Host Preflight Report Generation Check
+#   9. FIO Benchmark Job-File Parse Validation
+#  10. Prometheus & Grafana Observability Validation
+#  11. Python Syntax & Unit Test Suite
 # ==============================================================================
 
 set -euo pipefail
@@ -28,7 +31,7 @@ COLOR_BOLD="\033[1m"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
-TOTAL_STEPS=8
+TOTAL_STEPS=11
 PASSED_STEPS=0
 FAILED_STEPS=0
 
@@ -170,16 +173,17 @@ fi
 K8S_MANIFESTS=()
 while IFS= read -r kfile; do
     K8S_MANIFESTS+=("${kfile}")
-done < <(find "${REPO_ROOT}/infrastructure" "${REPO_ROOT}/kubevirt" "${REPO_ROOT}/storage" -type f \( -name "*.yaml" -o -name "*.yml" \) ! -name "kubeadm-init-config.yaml" ! -name "chart-metadata.yaml" ! -name "values.yaml" ! -name "release-metadata.yaml" 2>/dev/null || true)
+done < <(find "${REPO_ROOT}/infrastructure" "${REPO_ROOT}/kubevirt" "${REPO_ROOT}/storage" "${REPO_ROOT}/monitoring/prometheus" -maxdepth 3 -type f \( -name "*.yaml" -o -name "*.yml" \) ! -name "kubeadm-init-config.yaml" ! -name "chart-metadata.yaml" ! -name "values*.yaml" ! -name "release-metadata.yaml" ! -name "prometheus.yml" 2>/dev/null || true)
 
 if [[ "${#K8S_MANIFESTS[@]}" -gt 0 ]]; then
     CALICO_SCHEMA_TMPL="${REPO_ROOT}/infrastructure/k8s/calico/schemas/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json"
     MAYASTOR_SCHEMA_TMPL="${REPO_ROOT}/infrastructure/storage/mayastor/schemas/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json"
     KUBEVIRT_SCHEMA_TMPL="${REPO_ROOT}/kubevirt/installation/schemas/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json"
+    PROM_SCHEMA_TMPL="${REPO_ROOT}/monitoring/prometheus/schemas/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json"
     CORE_K8S_SCHEMA_TMPL="${REPO_ROOT}/infrastructure/k8s/schemas/v1.36.6-standalone-strict/{{.ResourceKind}}{{.KindSuffix}}.json"
     KUBECONFORM_CACHE="${HOME:-/tmp}/.cache/kubeconform"
     mkdir -p "${KUBECONFORM_CACHE}"
-    if ! kubeconform -strict -summary -cache "${KUBECONFORM_CACHE}" -schema-location "${CALICO_SCHEMA_TMPL}" -schema-location "${MAYASTOR_SCHEMA_TMPL}" -schema-location "${KUBEVIRT_SCHEMA_TMPL}" -schema-location "${CORE_K8S_SCHEMA_TMPL}" -schema-location default "${K8S_MANIFESTS[@]}"; then
+    if ! kubeconform -strict -summary -cache "${KUBECONFORM_CACHE}" -schema-location "${CALICO_SCHEMA_TMPL}" -schema-location "${MAYASTOR_SCHEMA_TMPL}" -schema-location "${KUBEVIRT_SCHEMA_TMPL}" -schema-location "${PROM_SCHEMA_TMPL}" -schema-location "${CORE_K8S_SCHEMA_TMPL}" -schema-location default "${K8S_MANIFESTS[@]}"; then
         SCHEMA_STEP_OK=false
     fi
 fi
@@ -221,7 +225,7 @@ log_step 7 "Validating JSON Parsing Integrity with jq"
 JSON_FILES=()
 while IFS= read -r jfile; do
     JSON_FILES+=("${jfile}")
-done < <(find "${REPO_ROOT}/reports" "${REPO_ROOT}/infrastructure" "${REPO_ROOT}/kubevirt" -type f -name "*.json" 2>/dev/null || true)
+done < <(find "${REPO_ROOT}/reports" "${REPO_ROOT}/infrastructure" "${REPO_ROOT}/kubevirt" "${REPO_ROOT}/monitoring" -type f -name "*.json" 2>/dev/null || true)
 
 JSON_ERRORS=0
 if [[ "${#JSON_FILES[@]}" -gt 0 ]]; then
@@ -251,6 +255,73 @@ if "${REPO_ROOT}/scripts/setup/01-host-preflight.sh" -q -o "${TEST_TMP}"; then
 else
     rm -rf "${TEST_TMP}"
     log_fail "01-host-preflight.sh encountered fatal failure."
+fi
+
+# ------------------------------------------------------------------------------
+# Step 9: FIO Benchmark Job-File Parse Validation
+# ------------------------------------------------------------------------------
+log_step 9 "Validating FIO Job Profiles (--parse-only)"
+FIO_ERR=0
+FIO_CNT=0
+while IFS= read -r fio_file; do
+    FIO_CNT=$((FIO_CNT + 1))
+    if ! fio --parse-only "${fio_file}" >/dev/null 2>&1; then
+        echo "    FIO parse failed: ${fio_file#"${REPO_ROOT}/"}" >&2
+        FIO_ERR=$((FIO_ERR + 1))
+    fi
+done < <(find "${REPO_ROOT}/benchmarks/fio" -type f -name "*.fio" 2>/dev/null || true)
+
+if [[ "${FIO_CNT}" -gt 0 ]] && [[ "${FIO_ERR}" -eq 0 ]]; then
+    log_pass "All ${FIO_CNT} FIO profile(s) passed fio --parse-only validation."
+else
+    log_fail "FIO job validation failed (count=${FIO_CNT}, errors=${FIO_ERR})."
+fi
+
+# ------------------------------------------------------------------------------
+# Step 10: Prometheus & Grafana Observability Validation
+# ------------------------------------------------------------------------------
+log_step 10 "Validating Prometheus Config/Rules (promtool) & Grafana Dashboards"
+PROMTOOL_BIN=""
+if command -v promtool >/dev/null 2>&1; then
+    PROMTOOL_BIN="$(command -v promtool)"
+elif [[ -x "${HOME}/.local/bin/promtool" ]]; then
+    PROMTOOL_BIN="${HOME}/.local/bin/promtool"
+fi
+
+OBS_OK=true
+if [[ -z "${PROMTOOL_BIN}" ]]; then
+    echo "    promtool binary missing in PATH / ~/.local/bin" >&2
+    OBS_OK=false
+else
+    if ! "${PROMTOOL_BIN}" check config "${REPO_ROOT}/monitoring/prometheus/prometheus.yml" >/dev/null 2>&1; then
+        echo "    promtool check config failed on monitoring/prometheus/prometheus.yml" >&2
+        OBS_OK=false
+    fi
+    TMP_RULES="$(mktemp /tmp/val-rules-XXXXXX.yaml)"
+    yq eval '.spec' "${REPO_ROOT}/monitoring/prometheus/prometheus-rules.yaml" >"${TMP_RULES}"
+    if ! "${PROMTOOL_BIN}" check rules "${TMP_RULES}" >/dev/null 2>&1; then
+        echo "    promtool check rules failed on monitoring/prometheus/prometheus-rules.yaml" >&2
+        OBS_OK=false
+    fi
+    rm -f "${TMP_RULES}"
+fi
+
+if [[ "${OBS_OK}" == true ]]; then
+    log_pass "Prometheus config, alerting rules (promtool), and Grafana JSONs passed."
+else
+    log_fail "Observability promtool/dashboard checks failed."
+fi
+
+# ------------------------------------------------------------------------------
+# Step 11: Python Syntax & Unit Test Suite
+# ------------------------------------------------------------------------------
+log_step 11 "Running Python Syntax & Benchmark Parser Unit Tests"
+if command -v python3 >/dev/null 2>&1 &&
+    python3 -m py_compile "${REPO_ROOT}/scripts/benchmark/summarize-results.py" &&
+    python3 -m unittest discover -s "${REPO_ROOT}/tests/benchmarks" -p "test_*.py" >/dev/null 2>&1; then
+    log_pass "Python benchmark parser syntax & unit tests passed."
+else
+    log_fail "Python syntax check or unit tests failed."
 fi
 
 # ------------------------------------------------------------------------------

@@ -1,0 +1,99 @@
+# ==============================================================================
+# kube-prometheus-stack v93.2.0 Values (Target 4-Node Kubernetes v1.36.6 Cluster)
+# Project: Deploy High-Performance Storage for Kubernetes (SWFW_5S_08)
+# Bundled Versions Verified (2026-11-11):
+#   - prometheus-operator: v0.95.2 | prometheus: v3.16.0 | grafana: 13.3.1 (chart 14.4.1)
+# Security & Networking:
+#   - Strictly internal ClusterIP services (Ports 9090 & 3000); zero Ingress/NodePort.
+#   - Automatically discovers all ServiceMonitors & PrometheusRules across namespaces.
+# ==============================================================================
+
+fullnameOverride: "kube-prometheus-stack"
+
+defaultRules:
+  create: true
+  rules:
+    windows: false
+
+windowsMonitoring:
+  enabled: false
+
+alertmanager:
+  enabled: true
+  alertmanagerSpec:
+    resources:
+      requests:
+        cpu: "50m"
+        memory: "64Mi"
+      limits:
+        cpu: "200m"
+        memory: "128Mi"
+
+prometheus:
+  service:
+    type: ClusterIP
+    port: 9090
+  prometheusSpec:
+    scrapeInterval: "15s"
+    evaluationInterval: "15s"
+    retention: "15d"
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+    probeSelectorNilUsesHelmValues: false
+    # Optional Mayastor persistence on target cluster (uncomment to bind 20Gi PVC):
+    # storageSpec: { volumeClaimTemplate: { spec: { storageClassName: mayastor-nvme-r3-ext4, accessModes: ["ReadWriteOnce"], resources: { requests: { storage: 20Gi } } } } }
+    resources:
+      requests:
+        cpu: "250m"
+        memory: "512Mi"
+      limits:
+        cpu: "1"
+        memory: "1536Mi"
+
+grafana:
+  enabled: true
+  service:
+    type: ClusterIP
+    port: 3000
+  admin:
+    existingSecret: "grafana-admin-credentials"
+    userKey: "admin-user"
+    passwordKey: "admin-password"
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      labelValue: "1"
+      searchNamespace: monitoring
+    datasources:
+      enabled: true
+      defaultDatasourceEnabled: true
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "192Mi"
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+
+kube-state-metrics:
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "64Mi"
+    limits:
+      cpu: "200m"
+      memory: "192Mi"
+
+prometheus-node-exporter:
+  prometheus:
+    monitor:
+      enabled: true
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "32Mi"
+    limits:
+      cpu: "200m"
+      memory: "64Mi"
