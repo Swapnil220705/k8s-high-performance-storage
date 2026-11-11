@@ -1,0 +1,24 @@
+==============================================================================
+       Kubernetes Cluster Architecture Validation Report
+==============================================================================
+Report Date:    2026-11-11T10:45:42Z
+Report Mode:    ACTIVE-PROBE
+Summary:        PASS: 12 | WARN: 1 | FAIL: 0 | N/T: 1
+------------------------------------------------------------------------------
+STATUS | CATEGORY       | CHECK                              | DETAILS
+------------------------------------------------------------------------------
+[PASS] | [API]          | API Server Connectivity            | Connected cleanly to v1.36.6+k3s1 (kubectl v1.36.0) 
+[PASS] | [Version]      | Target Minor Release (1.36.x)      | Server v1.36.6+k3s1 aligns with Candidate B target 
+[PASS] | [Nodes]        | Node Ready Condition               | 1/1 node(s) reporting Ready=True 
+[WARN] | [Topology]     | 4-Node Target Architecture         | Single/dev topology (1 node); multi-node control/worker separation not active 
+[NOT_] | [Topology]     | Inter-Node Pod & BGP Mesh          | Multi-node networking and scheduling require >= 2 cluster nodes 
+[PASS] | [NodeRoles]    | Node Role Assignment (wsl2-dev-node) | Roles: control-plane 
+[PASS] | [NodeHealth]   | Node Pressure (wsl2-dev-node)      | No Memory/Disk/PID pressure; Allocatable CPU=12, Mem=3599576Ki 
+[PASS] | [Runtime]      | Node CRI Runtime (wsl2-dev-node)   | containerd://2.3.7-k3s1.36 (aligned with Candidate B containerd 2.3.x LTS) 
+[PASS] | [CNI]          | Node PodCIDR (wsl2-dev-node)       | PodCIDR assigned: 10.244.0.0/24 (kernel 6.6.87.2-microsoft-standard-WSL2) 
+[PASS] | [SystemPods]   | kube-system Pod Health             | All 3/3 system pod(s) healthy and Ready 
+[PASS] | [DNS]          | CoreDNS Deployment                 | 1 CoreDNS replica(s) Ready in kube-system 
+[PASS] | [CNI]          | Local Flannel CNI Bridge           | Local Flannel CNI active (cni0/flannel.1); target Calico BGP remains INFRASTRUCTURE-DEPENDENT 
+[PASS] | [Scheduling]   | Live Pod Scheduling Probe          | Scheduled and started probe-server cleanly using rancher/mirrored-library-busybox:1.37.0 
+[PASS] | [Network]      | Pod-to-Pod & CoreDNS Probe         | probe-client resolved probe-svc via CoreDNS and fetched HTTP 200 over CNI 
+==============================================================================

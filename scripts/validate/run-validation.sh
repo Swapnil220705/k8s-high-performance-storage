@@ -136,7 +136,7 @@ YAMLLINT_CONF="${REPO_ROOT}/.yamllint.yaml"
 YAML_FILES=()
 while IFS= read -r yfile; do
     YAML_FILES+=("${yfile}")
-done < <(find "${REPO_ROOT}" -maxdepth 3 -type f \( -name "*.yaml" -o -name "*.yml" \) ! -path "*/.git/*")
+done < <(find "${REPO_ROOT}" -maxdepth 5 -type f \( -name "*.yaml" -o -name "*.yml" \) ! -path "*/.git/*")
 
 if [[ "${#YAML_FILES[@]}" -eq 0 ]]; then
     log_warn "No YAML files found for linting."
@@ -149,22 +149,40 @@ else
 fi
 
 # ------------------------------------------------------------------------------
-# Step 6: kubeconform Kubernetes Manifest Validation
+# Step 6: kubeconform & kubeadm Schema Validation
 # ------------------------------------------------------------------------------
-log_step 6 "Validating Kubernetes Manifests with kubeconform"
+log_step 6 "Validating Kubernetes Manifests with kubeconform & kubeadm"
+SCHEMA_STEP_OK=true
+
+if [[ -f "${REPO_ROOT}/infrastructure/k8s/kubeadm-init-config.yaml" ]]; then
+    if command -v kubeadm >/dev/null 2>&1; then
+        if kubeadm config validate --config "${REPO_ROOT}/infrastructure/k8s/kubeadm-init-config.yaml"; then
+            echo "    kubeadm config validate: infrastructure/k8s/kubeadm-init-config.yaml [ok]"
+        else
+            echo "    kubeadm config validate failed on kubeadm-init-config.yaml" >&2
+            SCHEMA_STEP_OK=false
+        fi
+    else
+        log_warn "kubeadm binary not found in PATH; skipping kubeadm-init-config.yaml schema validation."
+    fi
+fi
+
 K8S_MANIFESTS=()
 while IFS= read -r kfile; do
     K8S_MANIFESTS+=("${kfile}")
-done < <(find "${REPO_ROOT}/infrastructure" "${REPO_ROOT}/kubevirt" "${REPO_ROOT}/storage" -type f \( -name "*.yaml" -o -name "*.yml" \) 2>/dev/null || true)
+done < <(find "${REPO_ROOT}/infrastructure" "${REPO_ROOT}/kubevirt" "${REPO_ROOT}/storage" -type f \( -name "*.yaml" -o -name "*.yml" \) ! -name "kubeadm-init-config.yaml" 2>/dev/null || true)
 
-if [[ "${#K8S_MANIFESTS[@]}" -eq 0 ]]; then
-    log_pass "kubeconform ready: No Kubernetes manifests present in M1 (to be authored in M2-M5)."
-else
-    if kubeconform -strict -summary "${K8S_MANIFESTS[@]}"; then
-        log_pass "All Kubernetes manifests passed kubeconform strict validation."
-    else
-        log_fail "kubeconform validation failed on one or more manifests."
+if [[ "${#K8S_MANIFESTS[@]}" -gt 0 ]]; then
+    CRD_SCHEMA_TMPL="${REPO_ROOT}/infrastructure/k8s/calico/schemas/{{.Group}}/{{.ResourceKind}}_{{.ResourceAPIVersion}}.json"
+    if ! kubeconform -strict -summary -schema-location default -schema-location "${CRD_SCHEMA_TMPL}" "${K8S_MANIFESTS[@]}"; then
+        SCHEMA_STEP_OK=false
     fi
+fi
+
+if [[ "${SCHEMA_STEP_OK}" == true ]]; then
+    log_pass "All Kubernetes and kubeadm manifests passed schema validation."
+else
+    log_fail "Schema validation failed on one or more manifests."
 fi
 
 # ------------------------------------------------------------------------------
@@ -174,7 +192,7 @@ log_step 7 "Validating JSON Parsing Integrity with jq"
 JSON_FILES=()
 while IFS= read -r jfile; do
     JSON_FILES+=("${jfile}")
-done < <(find "${REPO_ROOT}/reports" -type f -name "*.json" 2>/dev/null || true)
+done < <(find "${REPO_ROOT}/reports" "${REPO_ROOT}/infrastructure" -type f -name "*.json" 2>/dev/null || true)
 
 JSON_ERRORS=0
 if [[ "${#JSON_FILES[@]}" -gt 0 ]]; then

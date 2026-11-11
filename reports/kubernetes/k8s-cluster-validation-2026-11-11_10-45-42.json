@@ -1,0 +1,28 @@
+{
+  "metadata": {
+    "reportDate": "2026-11-11T10:45:42Z",
+    "reportOnly": false,
+    "summary": {
+      "pass": 12,
+      "warning": 1,
+      "fail": 0,
+      "notTestable": 1
+    }
+  },
+  "checks": [
+    {"category":"API","status":"PASS","title":"API Server Connectivity","details":"Connected cleanly to v1.36.6+k3s1 (kubectl v1.36.0) "}
+   ,{"category":"Version","status":"PASS","title":"Target Minor Release (1.36.x)","details":"Server v1.36.6+k3s1 aligns with Candidate B target "}
+   ,{"category":"Nodes","status":"PASS","title":"Node Ready Condition","details":"1/1 node(s) reporting Ready=True "}
+   ,{"category":"Topology","status":"WARNING","title":"4-Node Target Architecture","details":"Single/dev topology (1 node); multi-node control/worker separation not active "}
+   ,{"category":"Topology","status":"NOT_TESTABLE","title":"Inter-Node Pod & BGP Mesh","details":"Multi-node networking and scheduling require >= 2 cluster nodes "}
+   ,{"category":"NodeRoles","status":"PASS","title":"Node Role Assignment (wsl2-dev-node)","details":"Roles: control-plane "}
+   ,{"category":"NodeHealth","status":"PASS","title":"Node Pressure (wsl2-dev-node)","details":"No Memory/Disk/PID pressure; Allocatable CPU=12, Mem=3599576Ki "}
+   ,{"category":"Runtime","status":"PASS","title":"Node CRI Runtime (wsl2-dev-node)","details":"containerd://2.3.7-k3s1.36 (aligned with Candidate B containerd 2.3.x LTS) "}
+   ,{"category":"CNI","status":"PASS","title":"Node PodCIDR (wsl2-dev-node)","details":"PodCIDR assigned: 10.244.0.0/24 (kernel 6.6.87.2-microsoft-standard-WSL2) "}
+   ,{"category":"SystemPods","status":"PASS","title":"kube-system Pod Health","details":"All 3/3 system pod(s) healthy and Ready "}
+   ,{"category":"DNS","status":"PASS","title":"CoreDNS Deployment","details":"1 CoreDNS replica(s) Ready in kube-system "}
+   ,{"category":"CNI","status":"PASS","title":"Local Flannel CNI Bridge","details":"Local Flannel CNI active (cni0/flannel.1); target Calico BGP remains INFRASTRUCTURE-DEPENDENT "}
+   ,{"category":"Scheduling","status":"PASS","title":"Live Pod Scheduling Probe","details":"Scheduled and started probe-server cleanly using rancher/mirrored-library-busybox:1.37.0 "}
+   ,{"category":"Network","status":"PASS","title":"Pod-to-Pod & CoreDNS Probe","details":"probe-client resolved probe-svc via CoreDNS and fetched HTTP 200 over CNI "}
+  ]
+}
